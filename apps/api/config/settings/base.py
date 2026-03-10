@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "apps.pipelines",
     "apps.imports",
     "apps.exports",
+    "apps.spreadsheets",
     "apps.automations",
     "apps.notifications",
     "apps.audit",
@@ -56,4 +57,6 @@ CELERY_TASK_QUEUES = {
     "exports": {},
     "automations": {},
     "notifications": {},
+    "spreadsheets": {},
+    "ai": {},
 }
