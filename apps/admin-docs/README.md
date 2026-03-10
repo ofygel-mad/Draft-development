@@ -1,0 +1,1 @@
+# Admin docs app placeholder
