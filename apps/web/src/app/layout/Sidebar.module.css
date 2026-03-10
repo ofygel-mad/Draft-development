@@ -1,4 +1,4 @@
-.sidebar { position: fixed; left: 0; top: 0; bottom: 0; background: var(--color-bg-elevated); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; z-index: 50; overflow: hidden; }
+.sidebar { position: relative; height: 100%; background: var(--color-bg-elevated); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; z-index: 50; overflow: hidden; }
 .logo { height: var(--topbar-height); display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--color-border); }
 .logoIcon { width: 28px; height: 28px; background: var(--color-amber); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; }
 .logoText { font-family: var(--font-display); font-weight: 700; }

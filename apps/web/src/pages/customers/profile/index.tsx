@@ -16,6 +16,7 @@ import { Drawer } from '../../../shared/ui/Drawer';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
+import { CustomFieldsTab } from '../../../shared/ui/CustomFieldsTab';
 import { ru } from 'date-fns/locale';
 
 interface CustomerDetail {
@@ -44,6 +45,7 @@ const TABS = [
   { key: 'activity', label: 'Активность' },
   { key: 'deals', label: 'Сделки' },
   { key: 'tasks', label: 'Задачи' },
+  { key: 'fields', label: 'Доп. поля' },
 ];
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -295,6 +297,8 @@ export default function CustomerProfilePage() {
               })}
             </div>
           )}
+
+          {activeTab === 'fields' && id && <CustomFieldsTab entityType="customer" entityId={id} />}
 
           {activeTab === 'tasks' && (
             <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>

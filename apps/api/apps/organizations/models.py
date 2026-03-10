@@ -79,3 +79,54 @@ def apply_mode_capabilities(org: Organization) -> None:
         [OrganizationCapability(organization=org, capability_code=c) for c in all_caps],
         ignore_conflicts=True,
     )
+
+
+class CustomField(models.Model):
+    class FieldType(models.TextChoices):
+        TEXT = 'text', 'Текст'
+        NUMBER = 'number', 'Число'
+        DATE = 'date', 'Дата'
+        SELECT = 'select', 'Список'
+        BOOLEAN = 'boolean', 'Да/Нет'
+        URL = 'url', 'Ссылка'
+        PHONE = 'phone', 'Телефон'
+
+    class EntityType(models.TextChoices):
+        CUSTOMER = 'customer', 'Клиент'
+        DEAL = 'deal', 'Сделка'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='custom_fields')
+    entity_type = models.CharField(max_length=20, choices=EntityType.choices)
+    name = models.CharField(max_length=100)
+    field_key = models.SlugField(max_length=100)
+    field_type = models.CharField(max_length=20, choices=FieldType.choices, default=FieldType.TEXT)
+    options = models.JSONField(default=list, blank=True)
+    is_required = models.BooleanField(default=False)
+    position = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'custom_fields'
+        ordering = ['entity_type', 'position']
+        unique_together = [('organization', 'entity_type', 'field_key')]
+
+    def __str__(self):
+        return f'{self.entity_type}.{self.field_key}'
+
+
+class CustomFieldValue(models.Model):
+    """Значение кастомного поля для конкретного объекта."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    field = models.ForeignKey(CustomField, on_delete=models.CASCADE, related_name='values')
+    entity_type = models.CharField(max_length=20)
+    entity_id = models.UUIDField(db_index=True)
+    value_json = models.JSONField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'custom_field_values'
+        unique_together = [('field', 'entity_id')]
+        indexes = [models.Index(fields=['entity_type', 'entity_id'])]
