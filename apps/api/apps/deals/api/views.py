@@ -20,7 +20,12 @@ class DealViewSet(viewsets.ModelViewSet):
         return Deal.objects.filter(
             organization=self.request.user.organization,
             deleted_at__isnull=True,
-        ).select_related('customer', 'stage', 'pipeline', 'owner')
+        ).select_related(
+            'customer', 'stage', 'pipeline', 'owner'
+        ).prefetch_related(
+            'activities',
+            'pipeline__stages',
+        )
 
     def get_serializer_class(self):
         return DealListSerializer if self.action == 'list' else DealSerializer
