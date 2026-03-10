@@ -162,7 +162,7 @@ export default function ReportsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false}/>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false}/>
               <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false}
-                tickFormatter={v => new Intl.NumberFormat('ru-RU', { notation: 'compact' }).format(v)}/>
+                tickFormatter={(v: number) => new Intl.NumberFormat('ru-RU', { notation: 'compact' }).format(v)}/>
               <Tooltip content={<CustomTooltip/>}/>
               <Line type="monotone" dataKey="revenue" name="Выручка" stroke="#D97706" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: '#D97706' }}/>
               <Line type="monotone" dataKey="deals" name="Сделок" stroke="#3B82F6" strokeWidth={2} dot={false} strokeDasharray="4 2"/>

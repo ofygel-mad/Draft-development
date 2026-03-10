@@ -38,3 +38,14 @@ import-fixtures:
 
 reset-db:
 	docker-compose down -v && docker-compose up -d postgres && sleep 3 && $(MAKE) migrate
+
+
+seed-automations:
+	docker compose exec api python manage.py seed_automation_templates
+
+migrate-all:
+	docker compose exec api python manage.py makemigrations automations notifications audit organizations
+	docker compose exec api python manage.py migrate
+
+setup-phase4: migrate-all seed-automations
+	@echo "Phase 4 setup complete ✓"

@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from apps.core.api.sse_views import SSEView
 
 urlpatterns = [
     # Docs
@@ -19,8 +20,10 @@ urlpatterns = [
     path('api/v1/', include('apps.automations.api.urls')),
     path('api/v1/', include('apps.notifications.api.urls')),
     path('api/v1/', include('apps.activities.api.urls')),
+    path('api/v1/', include('apps.audit.api.urls')),
     path('api/v1/', include('apps.imports.api.urls')),
     path('api/v1/', include('apps.reports.api.urls')),
+    path('api/v1/sse/', SSEView.as_view(), name='sse'),
     # Health
     path('health/', include('apps.core.api.health_urls')),
     # Spreadsheets (existing)

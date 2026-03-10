@@ -3,9 +3,10 @@ import { Search, ChevronRight, Bell } from 'lucide-react';
 import { useCommandPalette } from '../../shared/stores/commandPalette';
 import { useAuthStore } from '../../shared/stores/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../../shared/api/client';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useSSE } from '../../shared/hooks/useSSE';
 
 interface Notification { id: string; title: string; body: string; is_read: boolean; created_at: string; }
 
@@ -19,6 +20,8 @@ export function NotificationBell() {
     queryFn: () => api.get('/notifications/'),
     refetchInterval: 30_000,
   });
+
+  useSSE({ onNotification: () => { qc.invalidateQueries({ queryKey: ['notifications'] }); } });
 
   const markAllRead = useMutation({
     mutationFn: () => api.post('/notifications/read_all/'),
@@ -118,7 +121,7 @@ const BREADCRUMBS: Record<string, string> = {
   '/settings': 'Настройки',
 };
 
-export function Topbar() {
+export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { toggle } = useCommandPalette();
@@ -139,11 +142,11 @@ export function Topbar() {
       top: 0,
       zIndex: 40,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-secondary)', fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div>{mobileMenuButton}</div><div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-secondary)', fontSize: 13 }}>
         <span style={{ color: 'var(--color-text-muted)' }}>CRM</span>
         <ChevronRight size={13} style={{ color: 'var(--color-text-muted)' }} />
         <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{crumb}</span>
-      </div>
+      </div></div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
