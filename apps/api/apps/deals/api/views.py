@@ -78,6 +78,28 @@ class DealViewSet(viewsets.ModelViewSet):
             ],
         })
 
+
+    @action(detail=True, methods=['get'])
+    def activities(self, request, pk=None):
+        deal = self.get_object()
+        from apps.activities.models import Activity
+
+        qs = Activity.objects.filter(
+            organization=request.user.organization,
+            deal=deal,
+        ).select_related('actor').order_by('-created_at')[:50]
+
+        data = [
+            {
+                'id': str(a.id),
+                'type': a.type,
+                'payload': a.payload,
+                'actor': {'full_name': a.actor.full_name} if a.actor else None,
+                'created_at': a.created_at.isoformat(),
+            }
+            for a in qs
+        ]
+        return Response({'results': data})
     @action(detail=True, methods=['post'])
     def change_stage(self, request, pk=None):
         deal = self.get_object()

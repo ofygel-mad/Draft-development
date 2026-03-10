@@ -28,3 +28,24 @@ class Activity(BaseModel):
             models.Index(fields=['organization', 'deal', '-created_at']),
         ]
         ordering = ['-created_at']
+
+
+class Note(BaseModel):
+    """Заметки к клиентам и сделкам"""
+
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='notes')
+    author = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='notes')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, null=True, blank=True, related_name='notes')
+    deal = models.ForeignKey('deals.Deal', on_delete=models.CASCADE, null=True, blank=True, related_name='notes')
+    body = models.TextField()
+
+    class Meta:
+        db_table = 'notes'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['organization', 'customer', '-created_at']),
+            models.Index(fields=['organization', 'deal', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'Note by {self.author_id} on {self.created_at.date()}'
