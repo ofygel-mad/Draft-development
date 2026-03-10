@@ -8,6 +8,7 @@ from apps.activities.models import Activity, Note
 from apps.customers.models import Customer
 from apps.customers.selectors.customer_queries import list_customers
 from apps.customers.serializers import CustomerListSerializer, CustomerSerializer
+from apps.audit.services import log_action
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
@@ -37,6 +38,27 @@ class CustomerViewSet(viewsets.ModelViewSet):
             entity_id=instance.id,
             actor_id=self.request.user.id,
             payload={'status': instance.status, 'source': instance.source or ''},
+        )
+        log_action(
+            organization_id=instance.organization_id,
+            actor_id=self.request.user.id,
+            action='customer.created',
+            entity_type='customer',
+            entity_id=str(instance.id),
+            entity_label=instance.full_name,
+            request=self.request,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_action(
+            organization_id=instance.organization_id,
+            actor_id=self.request.user.id,
+            action='customer.updated',
+            entity_type='customer',
+            entity_id=str(instance.id),
+            entity_label=instance.full_name,
+            request=self.request,
         )
 
     def perform_destroy(self, instance):

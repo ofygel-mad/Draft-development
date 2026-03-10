@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.utils import timezone
+from apps.audit.services import log_action
+from apps.automations.services.event_publisher import publish_event
 from ..models import Deal
 from ..serializers import DealSerializer, DealListSerializer
 
@@ -24,9 +26,30 @@ class DealViewSet(viewsets.ModelViewSet):
         return DealListSerializer if self.action == 'list' else DealSerializer
 
     def perform_create(self, serializer):
-        serializer.save(
+        instance = serializer.save(
             organization=self.request.user.organization,
             owner=self.request.user,
+        )
+        publish_event(
+            organization_id=instance.organization_id,
+            event_type='deal.created',
+            entity_type='deal',
+            entity_id=instance.id,
+            actor_id=self.request.user.id,
+            payload={
+                'stage_id': str(instance.stage_id),
+                'pipeline_id': str(instance.pipeline_id),
+                'amount': str(instance.amount) if instance.amount else None,
+            },
+        )
+        log_action(
+            organization_id=instance.organization_id,
+            actor_id=self.request.user.id,
+            action='deal.created',
+            entity_type='deal',
+            entity_id=str(instance.id),
+            entity_label=instance.title,
+            request=self.request,
         )
 
     def perform_destroy(self, instance):
@@ -121,7 +144,6 @@ class DealViewSet(viewsets.ModelViewSet):
                 deal.closed_at = None
             deal.save()
 
-            from apps.automations.services.event_publisher import publish_event
             publish_event(
                 organization_id=deal.organization_id,
                 event_type='deal.stage_changed',
@@ -132,8 +154,23 @@ class DealViewSet(viewsets.ModelViewSet):
                     'old_stage_id': str(old_stage.id),
                     'new_stage_id': str(new_stage.id),
                     'new_stage_type': new_stage.stage_type,
+                    'pipeline_id': str(deal.pipeline_id),
+                    'amount': str(deal.amount) if deal.amount else None,
                 },
                 dedupe_key=f'deal_stage_{deal.id}_{new_stage.id}',
+            )
+            log_action(
+                organization_id=deal.organization_id,
+                actor_id=request.user.id,
+                action='deal.stage_changed',
+                entity_type='deal',
+                entity_id=str(deal.id),
+                entity_label=deal.title,
+                diff={
+                    'old_stage_id': str(old_stage.id),
+                    'new_stage_id': str(new_stage.id),
+                },
+                request=request,
             )
 
             from apps.activities.models import Activity

@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
@@ -116,6 +117,22 @@ CELERY_TASK_QUEUES = {
     'automations': {},
     'notifications': {},
 }
+
+CELERY_BEAT_SCHEDULE = {
+    'process-scheduled-automations': {
+        'task': 'apps.automations.tasks.process_scheduled_automations',
+        'schedule': crontab(minute='*/5'),
+    },
+}
+
+# Email
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@crm.local')
 
 # Spectacular
 SPECTACULAR_SETTINGS = {
