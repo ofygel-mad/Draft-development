@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { api } from '../../../shared/api/client';
 import { useAuthStore } from '../../../shared/stores/auth';
 import { toast } from 'sonner';
@@ -10,12 +11,18 @@ interface LoginForm { email:string; password:string; }
 export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth  = useAuthStore(s => s.setAuth);
+  const token = useAuthStore((s) => s.token);
   const { register, handleSubmit, formState:{ isSubmitting, errors } } = useForm<LoginForm>();
+
+
+  useEffect(() => {
+    if (token) navigate('/', { replace: true });
+  }, [token, navigate]);
 
   const onSubmit = async (data: LoginForm) => {
     try {
       const res: any = await api.post('/auth/login', data);
-      setAuth(res.user, res.org, res.access, res.capabilities ?? [], res.role ?? 'viewer');
+      setAuth(res.user, res.org, res.access, res.refresh, res.capabilities ?? [], res.role ?? 'viewer');
       navigate('/');
     } catch (e: any) {
       toast.error(e?.response?.data?.detail ?? 'Ошибка входа');

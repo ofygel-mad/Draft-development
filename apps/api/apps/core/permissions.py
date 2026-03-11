@@ -7,7 +7,7 @@ ROLE_PERMS: dict[str, set[str]] = {
     'admin': {
         'customers.*', 'deals.*', 'tasks.*', 'pipelines.*',
         'automations.*', 'reports.*', 'users.list', 'users.invite',
-        'imports.*', 'audit.read',
+        'imports.*', 'audit.read', 'organizations.edit',
     },
     'manager': {
         'customers.read', 'customers.create', 'customers.update',
@@ -62,3 +62,23 @@ class HasRolePerm(BasePermission):
         if not perm:
             return request.user and request.user.is_authenticated
         return user_can(request.user, perm)
+
+
+class IsOrgAdmin(BasePermission):
+    """Разрешает доступ только owner и admin."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        role = get_user_role(request.user)
+        return role in ('owner', 'admin')
+
+
+class IsOrgOwner(BasePermission):
+    """Разрешает доступ только owner."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        role = get_user_role(request.user)
+        return role == 'owner'

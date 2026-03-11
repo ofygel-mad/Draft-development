@@ -7,6 +7,8 @@ class Migration(migrations.Migration):
         ('tasks', '0001_initial'),
     ]
 
+    atomic = False
+
     operations = [
         migrations.RunSQL(
             sql="""

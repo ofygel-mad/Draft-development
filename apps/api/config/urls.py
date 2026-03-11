@@ -1,16 +1,15 @@
+from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from apps.core.api.sse_views import SSEView
 
 urlpatterns = [
-    # Docs
+    path('django-admin/', admin.site.urls),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    # Auth
     path('api/v1/auth/', include('apps.users.api.auth_urls')),
     path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # Resources
     path('api/v1/', include('apps.organizations.api.urls')),
     path('api/v1/', include('apps.users.api.urls')),
     path('api/v1/', include('apps.customers.api.urls')),
@@ -24,8 +23,6 @@ urlpatterns = [
     path('api/v1/', include('apps.imports.api.urls')),
     path('api/v1/', include('apps.reports.api.urls')),
     path('api/v1/sse/', SSEView.as_view(), name='sse'),
-    # Health
     path('health/', include('apps.core.api.health_urls')),
-    # Spreadsheets (existing)
     path('api/v1/spreadsheets/', include('apps.spreadsheets.api.urls')),
 ]

@@ -7,13 +7,12 @@ logger = logging.getLogger(__name__)
 
 class HealthView(APIView):
     authentication_classes = []
-    permission_classes     = []
+    permission_classes = []
 
     def get(self, request):
         checks = {}
         status_code = 200
 
-        # Database
         try:
             from django.db import connection
             connection.ensure_connection()
@@ -23,7 +22,6 @@ class HealthView(APIView):
             checks['database'] = 'error'
             status_code = 503
 
-        # Redis
         try:
             from django.core.cache import cache
             cache.set('health_ping', '1', timeout=5)
@@ -34,14 +32,17 @@ class HealthView(APIView):
             checks['redis'] = 'error'
             status_code = 503
 
-        # Celery (ping default worker, timeout 1s)
         try:
-            from celery import current_app
-            insp = current_app.control.inspect(timeout=1)
-            pong = insp.ping()
-            checks['celery'] = 'ok' if pong else 'no_workers'
+            import redis as _redis
+            from django.conf import settings
+            r = _redis.from_url(settings.CELERY_BROKER_URL)
+            r.ping()
+            checks['celery_broker'] = 'ok'
         except Exception as e:
-            logger.warning('Health: celery ping failed: %s', e)
-            checks['celery'] = 'unreachable'
+            logger.warning('Health: celery broker ping failed: %s', e)
+            checks['celery_broker'] = 'unreachable'
 
-        return Response({'status': 'ok' if status_code == 200 else 'degraded', **checks}, status=status_code)
+        return Response(
+            {'status': 'ok' if status_code == 200 else 'degraded', **checks},
+            status=status_code,
+        )

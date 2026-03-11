@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
@@ -11,6 +11,8 @@ import { useUIStore } from '../../shared/stores/ui';
 import { useKeyboardShortcuts } from '../../shared/hooks/useKeyboardShortcuts';
 import { ShortcutsModal } from '../../shared/ui/ShortcutsModal';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { useAuthStore } from '../../shared/stores/auth';
+import { api } from '../../shared/api/client';
 
 export function AppShell() {
   const { isOpen, toggle } = useCommandPalette();
@@ -18,6 +20,29 @@ export function AppShell() {
   const { sidebarCollapsed } = useUIStore();
   const isMobile = useIsMobile();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { setAuth, clearAuth } = useAuthStore();
+
+  useEffect(() => {
+    api.get<any>('/auth/me')
+      .then((data) => {
+        setAuth(
+          data.user,
+          data.org,
+          useAuthStore.getState().token!,
+          useAuthStore.getState().refreshToken!,
+          data.capabilities ?? [],
+          data.role ?? 'viewer',
+        );
+        if (!data.onboarding_completed && location.pathname !== '/onboarding') {
+          navigate('/onboarding', { replace: true });
+        }
+      })
+      .catch(() => {
+        clearAuth();
+        navigate('/auth/login', { replace: true });
+      });
+  }, []);
 
   useKeyboardShortcuts({
     n: () => window.dispatchEvent(new CustomEvent('crm:new-customer')),
@@ -35,9 +60,7 @@ export function AppShell() {
       }
     };
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [toggle]);
 
   const sidebarW = isMobile ? 0 : sidebarCollapsed ? 64 : 220;

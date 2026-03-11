@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useCapabilities } from '../../shared/hooks/useCapabilities';
 import { useUIStore } from '../../shared/stores/ui';
+import { useAuthStore } from '../../shared/stores/auth';
 import styles from './Sidebar.module.css';
 
 const NAV = [
@@ -25,12 +26,14 @@ const NAV = [
   { to: '/imports', icon: Upload, label: 'Импорт', cap: 'customers.import' },
   { to: '/automations', icon: Zap, label: 'Автоматизации', cap: 'automations.manage' },
   { to: '/audit', icon: Shield, label: 'Аудит', cap: 'audit.read' },
+  { to: '/admin', icon: Shield, label: 'Админ-панель', adminOnly: true },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { can } = useCapabilities();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const visible = NAV.filter((i) => i.always || (i.cap && can(i.cap)));
+  const role = useAuthStore((s) => s.role);
+  const visible = NAV.filter((i) => i.always || (i.cap && can(i.cap)) || (i.adminOnly && (role === 'owner' || role === 'admin')));
 
   return (
     <motion.aside

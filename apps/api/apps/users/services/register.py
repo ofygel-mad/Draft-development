@@ -3,6 +3,7 @@ from django.utils.text import slugify
 from apps.users.models import User, Role, OrganizationMembership
 from apps.organizations.models import Organization
 from apps.organizations.models import apply_mode_capabilities
+from apps.core.services import ensure_default_pipeline
 
 
 @transaction.atomic
@@ -32,6 +33,7 @@ def register_organization(
         company_size=company_size,
     )
     apply_mode_capabilities(org)
+    ensure_default_pipeline(org)
 
     Role.objects.create(organization=org, name='Владелец', code='owner', is_system=True)
     Role.objects.create(organization=org, name='Менеджер', code='manager', is_system=True)
