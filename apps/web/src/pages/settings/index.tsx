@@ -61,10 +61,10 @@ function OrgSection() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {([
-        ['name', 'Название организации'],
+        ['name',     'Название организации'],
         ['timezone', 'Часовой пояс'],
-        ['currency', 'Валюта'],
-      ] as [keyof OrgData, string][]).map(([field, label]) => (
+        ['currency', 'Валюта по умолчанию'],
+      ] as const).map(([field, label]) => (
         <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{label}</label>
           <input {...register(field)} defaultValue={(org as any)?.[field] ?? ''} className="crm-input"/>

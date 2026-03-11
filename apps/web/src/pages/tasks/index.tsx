@@ -66,7 +66,7 @@ export default function TasksPage() {
   });
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
+    <div style={{ padding: isMobile ? '14px 16px' : '24px 28px' }}>
       <PageHeader
         title="Задачи"
         subtitle={data ? `${data.results?.length ?? 0} задач` : undefined}
@@ -74,7 +74,12 @@ export default function TasksPage() {
       />
 
       {/* Filter tabs */}
-      <div className="tasks-filter-tabs" style={{ display:'flex', gap:4, marginBottom:20, padding:'4px', background:'var(--color-bg-muted)', borderRadius:'var(--radius-md)', width:'fit-content' }}>
+      <div className="tasks-filter-tabs" style={{
+        display:'flex', gap:4, marginBottom:20, padding:'4px',
+        background:'var(--color-bg-muted)', borderRadius:'var(--radius-md)',
+        width: isMobile ? '100%' : 'fit-content',
+        overflowX: isMobile ? 'auto' : 'visible',
+      }}>
         {FILTERS.map(f => (
           <button
             key={f.key}

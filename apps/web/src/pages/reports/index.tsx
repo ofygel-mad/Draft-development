@@ -105,7 +105,7 @@ export default function ReportsPage() {
   ] : [];
 
   return (
-    <div style={{ padding: isMobile ? '14px' : '24px 28px' }}>
+    <div style={{ padding: isMobile ? '14px 16px' : '24px 28px' }}>
       <PageHeader title="Отчёты" subtitle="Аналитика по клиентам и сделкам"
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
@@ -118,7 +118,7 @@ export default function ReportsPage() {
       />
 
       <motion.div variants={stagger} initial="hidden" animate="show"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px,1fr))', gap: 16, marginBottom: 28 }}>
+        style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(auto-fill, minmax(210px,1fr))', gap: 16, marginBottom: 28 }}>
         {isLoading ? [1,2,3,4].map(i => <div key={i} style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 20, height: 120 }}><Skeleton height={16} width="40%" style={{ marginBottom: 12 }}/><Skeleton height={32} width="70%"/></div>)
           : <>
             <Metric label="Всего клиентов"   value={data?.customers_count ?? 0}    delta={data?.customers_delta}   icon={<Users size={18}/>}       color="#3B82F6" />
@@ -129,7 +129,7 @@ export default function ReportsPage() {
         }
       </motion.div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 14 : 20, marginBottom: isMobile ? 14 : 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20, marginBottom: isMobile ? 12 : 20 }}>
         <Card title="Сделки по стадиям" delay={0.2}>
           {isLoading ? <Skeleton height={220}/> : (
             <ResponsiveContainer width="100%" height={220}>
@@ -178,7 +178,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 14 : 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
         {(data?.manager_leaderboard?.length ?? 0) > 0 && (
           <Card title="Лидерборд менеджеров" delay={0.5}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
