@@ -6,5 +6,6 @@
     "build": "pnpm --dir apps/web run build",
     "preview": "pnpm --dir apps/web run preview",
     "install:web": "pnpm --dir apps/web install"
-  }
+  },
+  "packageManager": "pnpm@10.18.3"
 }
