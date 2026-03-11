@@ -40,12 +40,28 @@ docs/
    ```
 2. Start services:
    ```bash
-   make up
+   make dev
    ```
 3. Open:
    - Web: http://localhost:5173
    - API: http://localhost:8000/api/v1/health/
    - Nginx: http://localhost
+
+
+## Local commands from repository root
+
+If you prefer running tools from the repo root instead of changing directories:
+
+- Frontend scripts (proxy to `apps/web`):
+  ```bash
+  pnpm run install:web
+  pnpm run dev
+  pnpm run build
+  ```
+- Backend dependencies (proxy to `apps/api/requirements`):
+  ```bash
+  pip install -r requirements/dev.txt
+  ```
 
 ## Architectural principles
 
