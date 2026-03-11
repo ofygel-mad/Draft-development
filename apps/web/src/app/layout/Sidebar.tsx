@@ -11,10 +11,11 @@ import {
   Zap,
   Upload,
   ChevronLeft,
+  Crown,
 } from 'lucide-react';
 import { useCapabilities } from '../../shared/hooks/useCapabilities';
+import { useRole } from '../../shared/hooks/useRole';
 import { useUIStore } from '../../shared/stores/ui';
-import { useAuthStore } from '../../shared/stores/auth';
 import styles from './Sidebar.module.css';
 
 const NAV = [
@@ -26,14 +27,13 @@ const NAV = [
   { to: '/imports', icon: Upload, label: 'Импорт', cap: 'customers.import' },
   { to: '/automations', icon: Zap, label: 'Автоматизации', cap: 'automations.manage' },
   { to: '/audit', icon: Shield, label: 'Аудит', cap: 'audit.read' },
-  { to: '/admin', icon: Shield, label: 'Админ-панель', adminOnly: true },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { can } = useCapabilities();
+  const { isAdmin } = useRole();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const role = useAuthStore((s) => s.role);
-  const visible = NAV.filter((i) => i.always || (i.cap && can(i.cap)) || (i.adminOnly && (role === 'owner' || role === 'admin')));
+  const visible = NAV.filter((i) => i.always || (i.cap && can(i.cap)));
 
   return (
     <motion.aside
@@ -90,6 +90,31 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
       </nav>
 
       <div className={styles.bottom}>
+        {isAdmin && (
+          <NavLink
+            to="/admin"
+            onClick={() => onNavigate?.()}
+            title={sidebarCollapsed ? 'Управление' : undefined}
+            className={({ isActive }) => [styles.navItem, isActive ? styles.navItemActive : ''].join(' ')}
+            style={{ color: 'var(--color-amber)' }}
+          >
+            <Crown size={18} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+            <AnimatePresence initial={false}>
+              {!sidebarCollapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.13 }}
+                  style={{ overflow: 'hidden', whiteSpace: 'nowrap', fontSize: 13 }}
+                >
+                  Управление
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </NavLink>
+        )}
+
         <NavLink
           to="/settings"
           onClick={() => onNavigate?.()}
