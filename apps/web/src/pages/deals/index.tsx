@@ -17,6 +17,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { EmptyState } from '../../shared/ui/EmptyState';
 import { Drawer } from '../../shared/ui/Drawer';
 import { toast } from 'sonner';
+import { useIsMobile } from '../../shared/hooks/useIsMobile';
 
 interface DealCard {
   id:string; title:string; amount?:number; currency:string; status:string;
@@ -137,6 +138,7 @@ export default function DealsPage() {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string|null>(null);
   const [createDrawer, setCreateDrawer] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handler = () => setCreateDrawer(true);
@@ -189,6 +191,41 @@ export default function DealsPage() {
   }
 
   const totalDeals = board?.stages.flatMap(s=>s.deals).length ?? 0;
+
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: isMobile ? '14px 16px' : '24px 28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <Skeleton height={28} width={120} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Skeleton height={32} width={100} style={{ borderRadius: 8 }} />
+            <Skeleton height={32} width={120} style={{ borderRadius: 8 }} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} style={{ minWidth: 260, flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Skeleton height={16} width={80} />
+                <Skeleton height={16} width={24} style={{ borderRadius: 99 }} />
+              </div>
+              {[1, 2, 3].map((j) => (
+                <div key={j} style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 10, padding: 14, marginBottom: 8 }}>
+                  <Skeleton height={13} width="75%" style={{ marginBottom: 8 }} />
+                  <Skeleton height={11} width="50%" style={{ marginBottom: 10 }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Skeleton height={20} width={70} style={{ borderRadius: 99 }} />
+                    <Skeleton height={20} width={50} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

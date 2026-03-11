@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useMatch } from 'react-router-dom';
 import { Search, ChevronRight, Bell, Sun, Moon, Monitor } from 'lucide-react';
 import { useCommandPalette } from '../../shared/stores/commandPalette';
 import { useAuthStore } from '../../shared/stores/auth';
@@ -112,6 +112,36 @@ export function NotificationBell() {
   );
 }
 
+function useDynamicCrumb(): { parent: string; parentPath: string; current: string } | null {
+  const matchCustomer = useMatch('/customers/:id');
+  const matchDeal = useMatch('/deals/:id');
+  const matchTask = useMatch('/tasks/:id');
+
+  const customerId = matchCustomer?.params.id;
+  const dealId = matchDeal?.params.id;
+
+  const { data: customer } = useQuery({
+    queryKey: ['customer-name', customerId],
+    queryFn: () => api.get(`/customers/${customerId}/`),
+    enabled: !!customerId,
+    staleTime: 60_000,
+    select: (d: any) => d.full_name as string,
+  });
+
+  const { data: deal } = useQuery({
+    queryKey: ['deal-name', dealId],
+    queryFn: () => api.get(`/deals/${dealId}/`),
+    enabled: !!dealId,
+    staleTime: 60_000,
+    select: (d: any) => d.title as string,
+  });
+
+  if (customerId) return { parent: 'Клиенты', parentPath: '/customers', current: customer ?? '...' };
+  if (dealId) return { parent: 'Сделки', parentPath: '/deals', current: deal ?? '...' };
+  if (matchTask) return { parent: 'Задачи', parentPath: '/tasks', current: 'Задача' };
+  return null;
+}
+
 const BREADCRUMBS: Record<string, string> = {
   '/': 'Главная', '/customers': 'Клиенты', '/deals': 'Сделки',
   '/tasks': 'Задачи', '/reports': 'Отчёты', '/automations': 'Автоматизации',
@@ -126,6 +156,7 @@ export function Topbar() {
   const { theme, setTheme } = useUIStore();
   const isMobile  = useIsMobile();
   const { locale, setLocale } = useT();
+  const dynamic = useDynamicCrumb();
 
   const crumb = BREADCRUMBS[location.pathname] ?? location.pathname.slice(1);
 
@@ -145,10 +176,29 @@ export function Topbar() {
           color: 'var(--color-text-secondary)', minWidth: 0 }}>
           {!isMobile && <span style={{ color: 'var(--color-text-muted)' }}>CRM</span>}
           {!isMobile && <ChevronRight size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />}
-          <span style={{ color: 'var(--color-text-primary)', fontWeight: 600,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {crumb}
-          </span>
+          {dynamic ? (
+            <>
+              <button
+                onClick={() => navigate(dynamic.parentPath)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: 13, color: 'var(--color-text-muted)', fontFamily: 'var(--font-body)',
+                }}
+              >
+                {dynamic.parent}
+              </button>
+              <ChevronRight size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+              <span style={{ color: 'var(--color-text-primary)', fontWeight: 600,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                {dynamic.current}
+              </span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--color-text-primary)', fontWeight: 600,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {crumb}
+            </span>
+          )}
         </div>
       </div>
 

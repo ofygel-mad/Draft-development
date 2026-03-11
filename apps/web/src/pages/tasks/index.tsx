@@ -20,6 +20,17 @@ interface TaskForm {
   description?: string;
   priority: 'low' | 'medium' | 'high';
   due_at?: string;
+  assigned_to_id?: string;
+  customer_id?: string;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{label}</label>
+      {children}
+    </div>
+  );
 }
 
 interface Task {
@@ -52,7 +63,7 @@ export default function TasksPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<TaskForm>({
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<TaskForm>({
     defaultValues: { priority: 'medium' },
   });
 
@@ -68,10 +79,25 @@ export default function TasksPage() {
   });
 
   useEffect(() => {
-    const handler = () => setDrawerOpen(true);
+    const handler = (e?: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (detail?.customerId) reset({ customer_id: detail.customerId } as TaskForm);
+      setDrawerOpen(true);
+    };
     window.addEventListener('crm:new-task', handler);
     return () => window.removeEventListener('crm:new-task', handler);
-  }, []);
+  }, [reset]);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && drawerOpen) {
+        e.preventDefault();
+        handleSubmit((d) => createMutation.mutate(d))();
+      }
+    };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [drawerOpen, handleSubmit, createMutation]);
 
   const params: Record<string, string> = {};
   if (filter === 'mine')      params.mine      = '1';
@@ -85,7 +111,20 @@ export default function TasksPage() {
 
   const completeMutation = useMutation({
     mutationFn: (id:string) => api.post(`/tasks/${id}/complete/`),
-    onSuccess:  () => { qc.invalidateQueries({ queryKey:['tasks'] }); toast.success('Задача выполнена'); },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ['tasks', filter] });
+      const prev = qc.getQueryData<{ results: Task[] }>(['tasks', filter]);
+      qc.setQueryData(['tasks', filter], (old: any) => ({
+        ...old,
+        results: (old?.results ?? []).map((t: Task) => (t.id === id ? { ...t, status: 'done' } : t)),
+      }));
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['tasks', filter], ctx.prev);
+      toast.error('Не удалось обновить задачу');
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey:['tasks'] }); toast.success('Задача выполнена ✓'); },
   });
 
   return (
@@ -95,92 +134,6 @@ export default function TasksPage() {
         subtitle={data ? `${data.results?.length ?? 0} задач` : undefined}
         actions={<Button icon={<Plus size={15}/>} size="sm" onClick={() => setDrawerOpen(true)}>Новая задача</Button>}
       />
-
-      <Drawer open={drawerOpen} onClose={() => { setDrawerOpen(false); reset(); }} title="Новая задача">
-        <form onSubmit={handleSubmit((d) => createMutation.mutate(d))}
-          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
-              Название *
-            </label>
-            <input
-              {...register('title', { required: true })}
-              placeholder="Позвонить клиенту..."
-              style={{
-                width: '100%', padding: '8px 12px', fontSize: 14,
-                border: `1px solid ${errors.title ? '#EF4444' : 'var(--color-border)'}`,
-                borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)',
-                color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)',
-                outline: 'none', boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
-              Описание
-            </label>
-            <textarea
-              {...register('description')}
-              rows={3}
-              placeholder="Дополнительные детали..."
-              style={{
-                width: '100%', padding: '8px 12px', fontSize: 14, resize: 'vertical',
-                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-                background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
-                fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
-                Приоритет
-              </label>
-              <select
-                {...register('priority')}
-                style={{
-                  width: '100%', padding: '8px 12px', fontSize: 14,
-                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-                  background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-body)', outline: 'none',
-                }}
-              >
-                <option value="low">Низкий</option>
-                <option value="medium">Средний</option>
-                <option value="high">Высокий</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
-                Срок
-              </label>
-              <input
-                type="datetime-local"
-                {...register('due_at')}
-                style={{
-                  width: '100%', padding: '8px 12px', fontSize: 14,
-                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-                  background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8 }}>
-            <Button type="button" variant="ghost" onClick={() => { setDrawerOpen(false); reset(); }}>
-              Отмена
-            </Button>
-            <Button type="submit" loading={createMutation.isPending}>
-              Создать задачу
-            </Button>
-          </div>
-        </form>
-      </Drawer>
 
       <div className="tasks-filter-tabs" style={{
         display:'flex', gap:4, marginBottom:20, padding:'4px',
@@ -271,9 +224,41 @@ export default function TasksPage() {
                     </div>
                   </motion.div>
                 );
-              })
-        }
+              })}
       </div>
+
+      <Drawer
+        open={drawerOpen}
+        onClose={() => { setDrawerOpen(false); reset(); }}
+        title="Новая задача"
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => { setDrawerOpen(false); reset(); }}>Отмена</Button>
+            <Button loading={isSubmitting} onClick={handleSubmit((d) => createMutation.mutate(d))}>
+              Создать <kbd style={{ fontSize: 10, opacity: 0.7, marginLeft: 4 }}>⌘S</kbd>
+            </Button>
+          </div>
+        }
+      >
+        <form style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Заголовок *">
+            <input {...register('title', { required: true })} placeholder="Что нужно сделать?" className="crm-input" />
+          </Field>
+          <Field label="Описание">
+            <textarea {...register('description')} placeholder="Детали задачи..." className="crm-textarea" style={{ minHeight: 72 }} />
+          </Field>
+          <Field label="Приоритет">
+            <select {...register('priority')} className="crm-input">
+              <option value="low">Низкий</option>
+              <option value="medium">Средний</option>
+              <option value="high">Высокий</option>
+            </select>
+          </Field>
+          <Field label="Срок выполнения">
+            <input type="datetime-local" {...register('due_at')} className="crm-input" />
+          </Field>
+        </form>
+      </Drawer>
     </div>
   );
 }

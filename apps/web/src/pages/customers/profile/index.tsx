@@ -20,6 +20,8 @@ import {
   MessageCircle,
   FileText,
   PhoneCall,
+  Copy,
+  Check,
 } from "lucide-react";
 import { api } from "../../../shared/api/client";
 import { Button } from "../../../shared/ui/Button";
@@ -158,6 +160,33 @@ const DEFAULT_ACTIVITY = {
   label: "Событие",
 };
 
+function CopyableValue({ value, href, children }: { value: string; href?: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+  const copy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      {href ? <a href={href} style={{ color: "var(--color-text-primary)", textDecoration: "none" }}>{children}</a> : children}
+      <button
+        onClick={copy}
+        title="Копировать"
+        style={{
+          background: "none", border: "none", cursor: "pointer", padding: "0 2px",
+          color: copied ? "#10B981" : "var(--color-text-muted)", display: "flex", transition: "color 0.15s",
+        }}
+      >
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+      </button>
+    </div>
+  );
+}
+
 function ContactItem({
   icon,
   label,
@@ -166,7 +195,7 @@ function ContactItem({
 }: {
   icon: ReactNode;
   label: string;
-  value: string;
+  value: ReactNode;
   href?: string;
 }) {
   if (!value) return null;
@@ -538,8 +567,7 @@ export default function CustomerProfilePage() {
             <ContactItem
               icon={<Phone size={14} />}
               label="Телефон"
-              value={customer.phone}
-              href={`tel:${customer.phone}`}
+              value={<CopyableValue value={customer.phone} href={`tel:${customer.phone}`}>{customer.phone}</CopyableValue>}
             />
           )}
           {customer.phone && (
@@ -591,8 +619,7 @@ export default function CustomerProfilePage() {
             <ContactItem
               icon={<Mail size={14} />}
               label="Email"
-              value={customer.email}
-              href={`mailto:${customer.email}`}
+              value={<CopyableValue value={customer.email} href={`mailto:${customer.email}`}>{customer.email}</CopyableValue>}
             />
           )}
           {customer.owner && (

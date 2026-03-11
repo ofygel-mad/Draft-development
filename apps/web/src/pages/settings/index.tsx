@@ -202,38 +202,39 @@ function OrgSection() {
   });
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {(
-        [
-          ["name", "Название организации"],
-          ["timezone", "Часовой пояс"],
-          ["currency", "Валюта по умолчанию"],
-        ] as const
-      ).map(([field, label]) => (
-        <div
-          key={field}
-          style={{ display: "flex", flexDirection: "column", gap: 6 }}
-        >
-          <label
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: "var(--color-text-secondary)",
-            }}
-          >
-            {label}
-          </label>
-          <input
-            {...register(field)}
-            defaultValue={(org as any)?.[field] ?? ""}
-            className="crm-input"
-          />
-        </div>
-      ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+          Название организации
+        </label>
+        <input {...register("name")} defaultValue={org?.name ?? ""} className="crm-input" />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+          Часовой пояс
+        </label>
+        <select {...register("timezone")} defaultValue={org?.timezone ?? "Asia/Almaty"} className="crm-input">
+          <option value="Asia/Almaty">Asia/Almaty (UTC+5) — Алматы, Астана</option>
+          <option value="Asia/Oral">Asia/Oral (UTC+5) — Уральск</option>
+          <option value="Asia/Aqtobe">Asia/Aqtobe (UTC+5) — Актобе</option>
+          <option value="Asia/Bishkek">Asia/Bishkek (UTC+6) — Бишкек</option>
+          <option value="Europe/Moscow">Europe/Moscow (UTC+3) — Москва</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)" }}>
+          Валюта по умолчанию
+        </label>
+        <select {...register("currency")} defaultValue={org?.currency ?? "KZT"} className="crm-input">
+          <option value="KZT">₸ KZT — Казахстанский тенге</option>
+          <option value="USD">$ USD — Доллар США</option>
+          <option value="EUR">€ EUR — Евро</option>
+          <option value="RUB">₽ RUB — Российский рубль</option>
+          <option value="CNY">¥ CNY — Китайский юань</option>
+        </select>
+      </div>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button
-          loading={isSubmitting}
-          onClick={handleSubmit((d) => mutation.mutate(d))}
-        >
+        <Button loading={isSubmitting} onClick={handleSubmit((d) => mutation.mutate(d))}>
           Сохранить
         </Button>
       </div>

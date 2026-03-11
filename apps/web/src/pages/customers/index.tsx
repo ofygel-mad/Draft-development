@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, User, Filter, X, Check, Trash2, UserCog, Tag } from 'lucide-react';
+import { Plus, User, Filter, X, Check, Trash2, UserCog, Tag, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../shared/api/client';
 import type { Customer } from '../../entities/customer/model/types';
@@ -17,7 +17,8 @@ import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
-import { validateBinIin, formatBinIin, isBin } from '../../shared/utils/kz';
+import { validateBinIin, formatBinIin, isBin, formatPhoneForWhatsApp } from '../../shared/utils/kz';
+import { ContextMenu, type ContextMenuItem } from '../../shared/ui/ContextMenu';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -145,6 +146,7 @@ export default function CustomersPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; customerId: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const isMobile = useIsMobile();
@@ -261,6 +263,10 @@ export default function CustomersPage() {
                 const isSel = selected.has(c.id);
                 return (
                   <motion.div key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.025 }}
+                    onContextMenu={e => {
+                      e.preventDefault();
+                      setCtxMenu({ x: e.clientX, y: e.clientY, customerId: c.id });
+                    }}
                     style={{ display: 'grid', gridTemplateColumns: isMobile ? '36px 1fr 1fr 1fr' : '36px 2fr 1.4fr 1.4fr 1fr 1fr',
                       padding: '11px 16px', borderBottom: '1px solid var(--color-border)',
                       cursor: 'pointer', fontSize: 13, alignItems: 'center',
@@ -337,6 +343,20 @@ export default function CustomersPage() {
       </Drawer>
 
       <FilterPanel open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onChange={setFilters} />
+
+
+      {ctxMenu && (() => {
+        const c = data?.results?.find((x) => x.id === ctxMenu.customerId);
+        if (!c) return null;
+        const items: ContextMenuItem[] = [
+          { label: 'Открыть профиль', icon: <ExternalLink size={13} />, onClick: () => navigate(`/customers/${c.id}`) },
+          { label: 'Новая задача', icon: <UserCog size={13} />, onClick: () => { window.dispatchEvent(new CustomEvent('crm:new-task', { detail: { customerId: c.id } })); } },
+          ...(c.phone ? [{ label: 'Написать в WhatsApp', icon: <MessageCircle size={13} />, color: '#10B981', onClick: () => window.open(`https://wa.me/${formatPhoneForWhatsApp(c.phone)}`, '_blank') }] : []),
+          { label: '', divider: true, onClick: () => {} },
+          { label: 'Удалить', icon: <Trash2 size={13} />, danger: true, onClick: () => { if (confirm(`Удалить ${c.full_name}?`)) bulkMutation.mutate({ action: 'delete', ids: [c.id] }); } },
+        ];
+        return <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={items} onClose={() => setCtxMenu(null)} />;
+      })()}
 
       <Drawer open={drawerOpen} onClose={() => { setDrawer(false); reset(); }} title="Новый клиент"
         footer={

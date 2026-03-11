@@ -96,7 +96,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
             onClick={() => onNavigate?.()}
             title={sidebarCollapsed ? 'Управление' : undefined}
             className={({ isActive }) => [styles.navItem, isActive ? styles.navItemActive : ''].join(' ')}
-            style={{ color: 'var(--color-amber)' }}
           >
             <Crown size={18} strokeWidth={1.75} style={{ flexShrink: 0 }} />
             <AnimatePresence initial={false}>
@@ -119,7 +118,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
           to="/settings"
           onClick={() => onNavigate?.()}
           title={sidebarCollapsed ? 'Настройки' : undefined}
-          className={styles.navItem}
+          className={({ isActive }) => [styles.navItem, isActive ? styles.navItemActive : ''].join(' ')}
         >
           <Settings size={18} strokeWidth={1.75} style={{ flexShrink: 0 }} />
           <AnimatePresence initial={false}>

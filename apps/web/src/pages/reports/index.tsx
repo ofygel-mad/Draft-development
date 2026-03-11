@@ -201,7 +201,7 @@ function Metric({
   const display =
     fmt === "currency"
       ? `${formatNumber(value)} ${currencySymbol(useAuthStore.getState().org?.currency ?? "KZT")}`
-      : value.toLocaleString("ru-RU");
+      : value.toLocaleString("ru-KZ");
   return (
     <motion.div
       variants={item}
@@ -403,9 +403,26 @@ export default function ReportsPage() {
           marginBottom: isMobile ? 12 : 20,
         }}
       >
-        <Card title="Сделки по стадиям" delay={0.2}>
+        <Card
+          title="Сделки по стадиям"
+          delay={0.2}
+          action={isLoading ? <Skeleton height={16} width={60} /> : undefined}
+        >
           {isLoading ? (
-            <Skeleton height={220} />
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 220, padding: "0 8px" }}>
+              {[60, 80, 45, 90, 55, 70].map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    flex: 1,
+                    height: `${h}%`,
+                    borderRadius: "4px 4px 0 0",
+                    background: "var(--color-bg-muted)",
+                    animation: `pulse 1.4s ease-in-out ${i * 0.1}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={data?.deals_by_stage ?? []} barSize={28}>
@@ -501,11 +518,7 @@ export default function ReportsPage() {
                   tick={{ fontSize: 11, fill: "var(--color-text-muted)" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) =>
-                    new Intl.NumberFormat("ru-KZ", {
-                      notation: "compact",
-                    }).format(v)
-                  }
+                  tickFormatter={(v) => `${new Intl.NumberFormat("ru-KZ", { notation: "compact" }).format(v)} ${orgSym}` }
                 />
                 <Tooltip content={<Tip />} />
                 <Line
