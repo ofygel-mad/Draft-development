@@ -16,6 +16,7 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { useIsMobile } from '../../shared/hooks/useIsMobile';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -145,6 +146,7 @@ export default function CustomersPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<Filters>(EMPTY);
+  const isMobile = useIsMobile();
   const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
@@ -196,7 +198,7 @@ export default function CustomersPage() {
   const fc = countActive(filters);
 
   return (
-    <div style={{ padding: '24px 28px' }}>
+    <div style={{ padding: isMobile ? '14px' : '24px 28px' }}>
       <PageHeader
         title="Клиенты"
         subtitle={data ? `${data.count} всего` : undefined}
@@ -231,19 +233,19 @@ export default function CustomersPage() {
 
       <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 1.4fr 1fr 1fr',
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '36px 1fr 1fr 1fr' : '36px 2fr 1.4fr 1.4fr 1fr 1fr',
           padding: '10px 16px', borderBottom: '1px solid var(--color-border)',
           fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)',
           textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--color-bg-muted)' }}>
           <div onClick={toggleAll} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <CheckboxIcon checked={allChecked} indeterminate={someChecked} />
           </div>
-          <span>Имя</span><span>Телефон</span><span>Email</span><span>Статус</span><span>Добавлен</span>
+          <span>Имя</span><span>Телефон</span>{!isMobile && <span>Email</span>}<span>Статус</span>{!isMobile && <span>Добавлен</span>}
         </div>
 
         {isLoading
           ? [1, 2, 3, 4, 5].map(i => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 1.4fr 1fr 1fr',
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? '36px 1fr 1fr 1fr' : '36px 2fr 1.4fr 1.4fr 1fr 1fr',
                 padding: '13px 16px', borderBottom: '1px solid var(--color-border)', gap: 12, alignItems: 'center' }}>
                 <Skeleton height={14} width={14} /><Skeleton height={14} width="70%" /><Skeleton height={14} width="60%" />
                 <Skeleton height={14} width="80%" /><Skeleton height={16} width={60} radius="var(--radius-full)" /><Skeleton height={14} width={60} />
@@ -258,7 +260,7 @@ export default function CustomersPage() {
                 const isSel = selected.has(c.id);
                 return (
                   <motion.div key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.025 }}
-                    style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 1.4fr 1fr 1fr',
+                    style={{ display: 'grid', gridTemplateColumns: isMobile ? '36px 1fr 1fr 1fr' : '36px 2fr 1.4fr 1.4fr 1fr 1fr',
                       padding: '11px 16px', borderBottom: '1px solid var(--color-border)',
                       cursor: 'pointer', fontSize: 13, alignItems: 'center',
                       background: isSel ? 'var(--color-amber-subtle)' : 'transparent',
@@ -273,11 +275,11 @@ export default function CustomersPage() {
                       {c.company_name && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.company_name}</div>}
                     </div>
                     <span onClick={() => navigate(`/customers/${c.id}`)} style={{ color: 'var(--color-text-secondary)' }}>{c.phone || '—'}</span>
-                    <span onClick={() => navigate(`/customers/${c.id}`)} style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</span>
+                    {!isMobile && <span onClick={() => navigate(`/customers/${c.id}`)} style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email || '—'}</span>}
                     <div onClick={() => navigate(`/customers/${c.id}`)}><Badge bg={sc.bg} color={sc.color}>{STATUS_LABELS[c.status]}</Badge></div>
-                    <span onClick={() => navigate(`/customers/${c.id}`)} style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
+                    {!isMobile && <span onClick={() => navigate(`/customers/${c.id}`)} style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
                       {new Date(c.created_at).toLocaleDateString('ru-RU')}
-                    </span>
+                    </span>}
                   </motion.div>
                 );
               })

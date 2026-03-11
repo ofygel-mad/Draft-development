@@ -60,10 +60,14 @@ function OrgSection() {
   });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {['name', 'timezone', 'currency'].map(field => (
+      {([
+        ['name', 'Название организации'],
+        ['timezone', 'Часовой пояс'],
+        ['currency', 'Валюта'],
+      ] as [keyof OrgData, string][]).map(([field, label]) => (
         <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>{field}</label>
-          <input {...register(field as keyof OrgData)} defaultValue={(org as any)?.[field] ?? ''} className="crm-input"/>
+          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{label}</label>
+          <input {...register(field)} defaultValue={(org as any)?.[field] ?? ''} className="crm-input"/>
         </div>
       ))}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

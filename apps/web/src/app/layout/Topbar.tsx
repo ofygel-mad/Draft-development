@@ -8,6 +8,7 @@ import { api } from '../../shared/api/client';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSSE } from '../../shared/hooks/useSSE';
 import { useUIStore } from '../../shared/stores/ui';
+import { useIsMobile } from '../../shared/hooks/useIsMobile';
 
 interface Notification { id: string; title: string; body: string; is_read: boolean; created_at: string; }
 
@@ -127,6 +128,7 @@ export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNod
   const navigate = useNavigate();
   const { toggle } = useCommandPalette();
   const user = useAuthStore(s => s.user);
+  const isMobile = useIsMobile();
 
   const crumb = BREADCRUMBS[location.pathname] ?? location.pathname.slice(1);
   const { theme, setTheme } = useUIStore();
@@ -152,6 +154,7 @@ export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNod
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
+          className="topbar-search-btn"
           onClick={toggle}
           style={{
             display: 'flex',
@@ -167,14 +170,14 @@ export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNod
           }}
         >
           <Search size={14} />
-          <span>Поиск</span>
-          <kbd style={{
+          {!isMobile && <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Поиск</span>}
+          {!isMobile && <kbd className="topbar-kbd" style={{
             padding: '1px 5px',
             background: 'var(--color-bg-elevated)',
             border: '1px solid var(--color-border)',
             borderRadius: 4,
             fontSize: 11,
-          }}>⌘K</kbd>
+          }}>⌘K</kbd>}
         </button>
 
         <NotificationBell />

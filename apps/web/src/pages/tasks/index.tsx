@@ -11,6 +11,7 @@ import { Skeleton } from '../../shared/ui/Skeleton';
 import { toast } from 'sonner';
 import { format, isPast, isToday } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useIsMobile } from '../../shared/hooks/useIsMobile';
 
 interface Task {
   id:string; title:string; description:string;
@@ -39,6 +40,7 @@ const FILTERS = [
 export default function TasksPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>('mine');
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handler = () => {
@@ -64,7 +66,7 @@ export default function TasksPage() {
   });
 
   return (
-    <div>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px' }}>
       <PageHeader
         title="Задачи"
         subtitle={data ? `${data.results?.length ?? 0} задач` : undefined}
@@ -72,7 +74,7 @@ export default function TasksPage() {
       />
 
       {/* Filter tabs */}
-      <div style={{ display:'flex', gap:4, marginBottom:20, padding:'4px', background:'var(--color-bg-muted)', borderRadius:'var(--radius-md)', width:'fit-content' }}>
+      <div className="tasks-filter-tabs" style={{ display:'flex', gap:4, marginBottom:20, padding:'4px', background:'var(--color-bg-muted)', borderRadius:'var(--radius-md)', width:'fit-content' }}>
         {FILTERS.map(f => (
           <button
             key={f.key}

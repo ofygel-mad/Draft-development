@@ -298,3 +298,63 @@ body {
   .crm-grid-3 { grid-template-columns: 1fr !important; }
   .crm-grid-4 { grid-template-columns: 1fr 1fr !important; }
 }
+
+/* ─── RESPONSIVE PAGES ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Topbar — скрыть длинные элементы */
+  .topbar-search-btn span { display: none; }
+  .topbar-kbd            { display: none; }
+
+  /* Customers table — скрыть неважные колонки */
+  .customers-col-email   { display: none; }
+  .customers-col-date    { display: none; }
+
+  /* Reports — стак графиков */
+  .reports-grid-2 { grid-template-columns: 1fr !important; }
+
+  /* Settings — полноширинные табы */
+  .settings-sidebar {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 2px;
+    padding: 4px;
+    background: var(--color-bg-muted);
+    border-radius: var(--radius-md);
+    border: none !important;
+  }
+  .settings-sidebar-item {
+    flex-shrink: 0;
+    border-radius: var(--radius-sm) !important;
+    padding: 6px 12px !important;
+  }
+
+  /* Drawer на мобильном — снизу */
+  .crm-drawer-backdrop  { align-items: flex-end !important; }
+
+  /* PageHeader — стак на мобильном */
+  .crm-page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+  .crm-page-header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Tasks page */
+  .tasks-filter-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Customers bulk bar */
+  .bulk-bar-label { display: none; }
+  .bulk-bar       { gap: 6px !important; padding: 8px 14px !important; }
+}
