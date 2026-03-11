@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --dir apps/web run dev",
-    "build": "pnpm --dir apps/web run build",
+    "build": "pnpm --dir apps/web install --frozen-lockfile && pnpm --dir apps/web run build",
     "preview": "pnpm --dir apps/web run preview",
     "install:web": "pnpm --dir apps/web install",
     "start": "pnpm --dir apps/web run preview --host 0.0.0.0 --port ${PORT:-4173}"
