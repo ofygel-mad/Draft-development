@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+from urllib.parse import parse_qs, unquote, urlparse
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -53,8 +54,27 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
-DATABASES = {
-    'default': {
+def _database_config_from_env() -> dict:
+    database_url = os.getenv('DATABASE_URL', '').strip()
+    if database_url:
+        parsed = urlparse(database_url)
+        query = parse_qs(parsed.query)
+        options = {'connect_timeout': 5}
+        sslmode = query.get('sslmode', [None])[0]
+        if sslmode:
+            options['sslmode'] = sslmode
+
+        return {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': parsed.path.lstrip('/') or 'crm',
+            'USER': unquote(parsed.username or ''),
+            'PASSWORD': unquote(parsed.password or ''),
+            'HOST': parsed.hostname or 'postgres',
+            'PORT': str(parsed.port or '5432'),
+            'OPTIONS': options,
+        }
+
+    return {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DB', 'crm'),
         'USER': os.getenv('POSTGRES_USER', 'crm'),
@@ -63,7 +83,9 @@ DATABASES = {
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
         'OPTIONS': {'connect_timeout': 5},
     }
-}
+
+
+DATABASES = {'default': _database_config_from_env()}
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
