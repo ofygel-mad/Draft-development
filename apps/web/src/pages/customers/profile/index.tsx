@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft, Phone, Mail, Building2, User, Edit3,
   Plus, MessageSquare, CheckSquare, Briefcase, Clock,
-  Tag, Calendar,
+  Tag, Calendar, MessageCircle,
 } from 'lucide-react';
 import { api } from '../../../shared/api/client';
 import { Button } from '../../../shared/ui/Button';
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { CustomFieldsTab } from '../../../shared/ui/CustomFieldsTab';
 import { ru } from 'date-fns/locale';
+import { formatPhoneForWhatsApp } from '../../../shared/utils/kz';
 
 interface CustomerDetail {
   id: string; full_name: string; company_name: string;
@@ -194,6 +195,28 @@ export default function CustomerProfilePage() {
 
         <div style={{ display: 'flex', gap: 24, marginTop: 20, flexWrap: 'wrap' }}>
           {customer.phone && <ContactItem icon={<Phone size={14} />} label="Телефон" value={customer.phone} href={`tel:${customer.phone}`} />}
+          {customer.phone && (
+            <a
+              href={`https://wa.me/${formatPhoneForWhatsApp(customer.phone)}?text=${encodeURIComponent(`Добрый день, ${customer.full_name}!`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <span style={{
+                  width: 32, height: 32, borderRadius: 'var(--radius-md)',
+                  background: '#D1FAE5', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: '#059669', flexShrink: 0,
+                }}>
+                  <MessageCircle size={14} />
+                </span>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>WhatsApp</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#059669' }}>Написать в WhatsApp</div>
+                </div>
+              </div>
+            </a>
+          )}
           {customer.email && <ContactItem icon={<Mail size={14} />} label="Email" value={customer.email} href={`mailto:${customer.email}`} />}
           {customer.owner && <ContactItem icon={<User size={14} />} label="Ответственный" value={customer.owner.full_name} />}
           <ContactItem icon={<Calendar size={14} />} label="Добавлен" value={format(new Date(customer.created_at), 'd MMM yyyy', { locale: ru })} />

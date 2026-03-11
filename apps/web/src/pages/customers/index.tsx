@@ -17,6 +17,7 @@ import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { validateBinIin, formatBinIin, isBin } from '../../shared/utils/kz';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -183,8 +184,8 @@ export default function CustomersPage() {
     },
   });
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<{
-    full_name: string; phone?: string; email?: string; company_name?: string; source?: string;
+  const { register, handleSubmit, reset, watch, formState } = useForm<{
+    full_name: string; phone?: string; email?: string; company_name?: string; source?: string; bin_iin?: string;
   }>();
   const createMutation = useMutation({
     mutationFn: (d: object) => api.post('/customers/', d),
@@ -341,7 +342,7 @@ export default function CustomersPage() {
         footer={
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => { setDrawer(false); reset(); }}>Отмена</Button>
-            <Button loading={isSubmitting} onClick={handleSubmit(d => createMutation.mutate(d))}>Создать</Button>
+            <Button loading={formState.isSubmitting} onClick={handleSubmit(d => createMutation.mutate(d))}>Создать</Button>
           </div>
         }>
         <form style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -349,6 +350,41 @@ export default function CustomersPage() {
           <Field label="Телефон"><input {...register('phone')} placeholder="+7 700 000 00 00" className="crm-input" /></Field>
           <Field label="Email"><input {...register('email')} type="email" placeholder="ivan@company.kz" className="crm-input" /></Field>
           <Field label="Компания"><input {...register('company_name')} placeholder="ТОО Компания" className="crm-input" /></Field>
+          <Field label="БИН/ИИН">
+            <div style={{ position: 'relative' }}>
+              <input
+                {...register('bin_iin', {
+                  validate: (v) => !v || validateBinIin(v) || 'Неверный БИН/ИИН',
+                  onChange: (e) => { e.target.value = formatBinIin(e.target.value); },
+                })}
+                placeholder="000000000000"
+                maxLength={12}
+                className="crm-input"
+                style={{ paddingRight: 80 }}
+              />
+              {watch('bin_iin') && validateBinIin(watch('bin_iin') ?? '') && (
+                <span style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 11, fontWeight: 600, color: '#059669',
+                  background: '#D1FAE5', padding: '2px 6px', borderRadius: 4,
+                }}>
+                  {isBin(watch('bin_iin') ?? '') ? 'БИН ✓' : 'ИИН ✓'}
+                </span>
+              )}
+              {watch('bin_iin') && !validateBinIin(watch('bin_iin') ?? '') && (watch('bin_iin') ?? '').length === 12 && (
+                <span style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 11, fontWeight: 600, color: '#DC2626',
+                  background: '#FEE2E2', padding: '2px 6px', borderRadius: 4,
+                }}>
+                  Ошибка
+                </span>
+              )}
+            </div>
+            {formState.errors.bin_iin && (
+              <span style={{ fontSize: 11, color: '#DC2626' }}>{formState.errors.bin_iin.message}</span>
+            )}
+          </Field>
           <Field label="Источник"><input {...register('source')} placeholder="Instagram, Referral..." className="crm-input" /></Field>
         </form>
       </Drawer>

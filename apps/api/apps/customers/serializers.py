@@ -9,7 +9,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['id', 'full_name', 'company_name', 'phone', 'email',
-                  'source', 'status', 'owner', 'created_at']
+                  'bin_iin', 'source', 'status', 'owner', 'created_at']
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -18,5 +18,5 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['id', 'full_name', 'company_name', 'phone', 'email',
-                  'source', 'status', 'notes', 'tags', 'owner',
+                  'bin_iin', 'source', 'status', 'notes', 'tags', 'owner',
                   'created_at', 'updated_at']

@@ -15,6 +15,7 @@ class Customer(BaseModel):
     company_name = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     email = models.EmailField(blank=True)
+    bin_iin = models.CharField(max_length=12, blank=True, verbose_name='БИН/ИИН')
     source = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     tags = models.JSONField(default=list, blank=True)

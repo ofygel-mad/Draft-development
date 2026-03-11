@@ -168,6 +168,21 @@ class CustomerViewSet(viewsets.ModelViewSet):
         ).order_by('status', 'due_at')
         return Response({'results': TaskSerializer(qs, many=True).data})
 
+
+    @action(detail=True, methods=['get'], url_path='whatsapp')
+    def whatsapp(self, request, pk=None):
+        customer = self.get_object()
+        phone = (customer.phone or '').strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        if not phone:
+            return Response({'error': 'Телефон не указан'}, status=400)
+        if phone.startswith('+'):
+            phone = phone[1:]
+        if phone.startswith('8') and len(phone) == 11:
+            phone = '7' + phone[1:]
+        wa_url = f'https://wa.me/{phone}'
+        template = f'Добрый день, {customer.full_name}!'
+        return Response({'url': wa_url, 'template': template, 'phone': phone})
+
     @action(detail=True, methods=['get'])
     def deals(self, request, pk=None):
         customer = self.get_object()

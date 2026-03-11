@@ -12,6 +12,7 @@ import { ShortcutsModal } from '../../shared/ui/ShortcutsModal';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { useAuthStore } from '../../shared/stores/auth';
 import { api } from '../../shared/api/client';
+import { MobileFab } from '../../shared/ui/MobileFab';
 
 export function AppShell() {
   const { isOpen, toggle } = useCommandPalette();
@@ -95,6 +96,7 @@ export function AppShell() {
       </div>
 
       {isMobile && <MobileNav />}
+      <MobileFab />
 
       <AnimatePresence>{isOpen && <CommandPalette />}</AnimatePresence>
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
