@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from apps.audit.services import log_action
@@ -56,6 +57,7 @@ class DealViewSet(viewsets.ModelViewSet):
             entity_label=instance.title,
             request=self.request,
         )
+        cache.delete(f'dashboard:{instance.organization_id}')
 
     def perform_destroy(self, instance):
         instance.deleted_at = timezone.now()

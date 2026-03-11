@@ -8,15 +8,26 @@ import { Menu, X } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useCommandPalette } from '../../shared/stores/commandPalette';
 import { useUIStore } from '../../shared/stores/ui';
+import { useKeyboardShortcuts } from '../../shared/hooks/useKeyboardShortcuts';
+import { ShortcutsModal } from '../../shared/ui/ShortcutsModal';
 
 const MOBILE_BP = 768;
 
 export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isOpen, toggle } = useCommandPalette();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { sidebarCollapsed } = useUIStore();
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
   const location = useLocation();
+
+  useKeyboardShortcuts({
+    'n': () => window.dispatchEvent(new CustomEvent('crm:new-customer')),
+    'd': () => window.dispatchEvent(new CustomEvent('crm:new-deal')),
+    't': () => window.dispatchEvent(new CustomEvent('crm:new-task')),
+    '/': () => toggle(),
+    '?': () => setShortcutsOpen(true),
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -120,6 +131,7 @@ export function AppShell() {
       </div>
 
       <AnimatePresence>{isOpen && <CommandPalette />}</AnimatePresence>
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <Toaster position="bottom-right" richColors />
     </div>
   );

@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
@@ -19,7 +20,16 @@ class CustomerViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return list_customers(organization_id=self.request.user.organization_id)
+        p = self.request.query_params
+        return list_customers(
+            organization_id=self.request.user.organization_id,
+            search=p.get('search', ''),
+            status=p.get('status', ''),
+            source=p.get('source', ''),
+            owner_id=p.get('owner_id'),
+            created_after=p.get('created_after'),
+            created_before=p.get('created_before'),
+        )
 
     def get_serializer_class(self):
         return CustomerListSerializer if self.action == 'list' else CustomerSerializer
@@ -48,6 +58,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             entity_label=instance.full_name,
             request=self.request,
         )
+        cache.delete(f'dashboard:{instance.organization_id}')
 
     def perform_update(self, serializer):
         instance = serializer.save()
@@ -60,10 +71,49 @@ class CustomerViewSet(viewsets.ModelViewSet):
             entity_label=instance.full_name,
             request=self.request,
         )
+        cache.delete(f'dashboard:{instance.organization_id}')
 
     def perform_destroy(self, instance):
         instance.deleted_at = timezone.now()
         instance.save(update_fields=['deleted_at'])
+        cache.delete(f'dashboard:{instance.organization_id}')
+
+    @action(detail=False, methods=['post'])
+    def bulk(self, request):
+        act     = request.data.get('action')
+        ids     = request.data.get('ids', [])
+        payload = request.data.get('payload', {})
+        if not ids:
+            return Response({'error': 'ids обязательны'}, status=400)
+
+        qs = Customer.objects.filter(
+            organization=request.user.organization,
+            id__in=ids,
+            deleted_at__isnull=True,
+        )
+
+        if act == 'delete':
+            affected = qs.update(deleted_at=timezone.now())
+            cache.delete(f'dashboard:{request.user.organization_id}')
+            return Response({'affected': affected})
+
+        if act == 'assign':
+            owner_id = payload.get('owner_id')
+            if not owner_id:
+                return Response({'error': 'owner_id обязателен'}, status=400)
+            affected = qs.update(owner_id=owner_id)
+            cache.delete(f'dashboard:{request.user.organization_id}')
+            return Response({'affected': affected})
+
+        if act == 'change_status':
+            new_status = payload.get('status')
+            if new_status not in ('new', 'active', 'inactive', 'archived'):
+                return Response({'error': 'Неверный статус'}, status=400)
+            affected = qs.update(status=new_status)
+            cache.delete(f'dashboard:{request.user.organization_id}')
+            return Response({'affected': affected})
+
+        return Response({'error': f'Неизвестное действие: {act}'}, status=400)
 
     @action(detail=True, methods=['post'])
     def notes(self, request, pk=None):

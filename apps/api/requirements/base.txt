@@ -25,3 +25,4 @@ django-celery-beat>=2.5.0
 django-storages[boto3]>=1.14.0
 boto3>=1.28.0
 phonenumbers>=8.13.0
+django-redis>=5.4.0

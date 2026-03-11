@@ -1,6 +1,9 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
 from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parents[3]
@@ -149,3 +152,23 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'CRM API',
     'VERSION': '1.0.0',
 }
+
+
+CACHES = {
+    'default': {
+        'BACKEND':  'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://redis:6379/1'),
+        'OPTIONS':  { 'CLIENT_CLASS': 'django_redis.client.DefaultClient' },
+        'TIMEOUT':  300,
+    }
+}
+
+SENTRY_DSN = os.getenv('SENTRY_DSN', '')
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+        environment=os.getenv('DJANGO_ENV', 'development'),
+        send_default_pii=False,
+    )

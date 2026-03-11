@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { CheckSquare, Plus, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -39,6 +39,14 @@ const FILTERS = [
 export default function TasksPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>('mine');
+
+  useEffect(() => {
+    const handler = () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('crm:new-task', handler);
+    return () => window.removeEventListener('crm:new-task', handler);
+  }, []);
 
   const params: Record<string, string> = {};
   if (filter === 'mine')      params.mine      = '1';
