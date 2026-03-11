@@ -9,6 +9,8 @@ import { useCommandPalette } from '../../shared/stores/commandPalette';
 import { useUIStore } from '../../shared/stores/ui';
 import { useKeyboardShortcuts } from '../../shared/hooks/useKeyboardShortcuts';
 import { ShortcutsModal } from '../../shared/ui/ShortcutsModal';
+import { FocusMode } from '../../widgets/focus-mode/FocusMode';
+import { SmartSuggestions } from '../../widgets/smart-suggestions/SmartSuggestions';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { useAuthStore } from '../../shared/stores/auth';
 import { api } from '../../shared/api/client';
@@ -18,7 +20,7 @@ import { AiAssistant } from '../../widgets/ai-assistant/AiAssistant';
 export function AppShell() {
   const { isOpen, toggle } = useCommandPalette();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const { sidebarCollapsed } = useUIStore();
+  const { sidebarCollapsed, toggleFocusMode } = useUIStore();
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,6 +51,7 @@ export function AppShell() {
     n: () => window.dispatchEvent(new CustomEvent('crm:new-customer')),
     d: () => window.dispatchEvent(new CustomEvent('crm:new-deal')),
     t: () => window.dispatchEvent(new CustomEvent('crm:new-task')),
+    f: () => toggleFocusMode(),
     '/': () => toggle(),
     '?': () => setShortcutsOpen(true),
   });
@@ -102,6 +105,8 @@ export function AppShell() {
 
       <AnimatePresence>{isOpen && <CommandPalette />}</AnimatePresence>
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <FocusMode />
+      <SmartSuggestions />
     </div>
   );
 }

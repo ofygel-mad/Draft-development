@@ -12,6 +12,7 @@ import {
   Upload,
   ChevronLeft,
   Crown,
+  Activity,
 } from 'lucide-react';
 import { useCapabilities } from '../../shared/hooks/useCapabilities';
 import { useRole } from '../../shared/hooks/useRole';
@@ -20,6 +21,7 @@ import styles from './Sidebar.module.css';
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'Главная', always: true },
+  { to: '/feed', icon: Activity, label: 'Лента', always: true },
   { to: '/customers', icon: Users, label: 'Клиенты', always: true },
   { to: '/deals', icon: Briefcase, label: 'Сделки', always: true },
   { to: '/tasks', icon: CheckSquare, label: 'Задачи', always: true },

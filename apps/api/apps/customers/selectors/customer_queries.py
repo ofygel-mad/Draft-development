@@ -34,7 +34,7 @@ def list_customers(
         qs = qs.filter(created_at__date__gte=created_after)
     if created_before:
         qs = qs.filter(created_at__date__lte=created_before)
-    return qs.select_related('owner')
+    return qs.select_related('owner').prefetch_related('activities', 'deals', 'tasks')
 
 
 def get_customer_by_id(*, organization_id, customer_id) -> Customer:

@@ -19,6 +19,9 @@ import { toast } from 'sonner';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { validateBinIin, formatBinIin, isBin, formatPhoneForWhatsApp } from '../../shared/utils/kz';
 import { ContextMenu, type ContextMenuItem } from '../../shared/ui/ContextMenu';
+import { HealthScoreBadge } from '../../shared/ui/HealthScoreBadge';
+import { useSuggestionsStore } from '../../shared/stores/suggestions';
+import { nanoid } from 'nanoid';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -191,7 +194,40 @@ export default function CustomersPage() {
   }>();
   const createMutation = useMutation({
     mutationFn: (d: object) => api.post('/customers/', d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customers'] }); toast.success('Клиент создан'); setDrawer(false); reset(); },
+    onSuccess: (created: any) => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Клиент создан');
+      setDrawer(false);
+      reset();
+
+      const { push } = useSuggestionsStore.getState();
+      const customerId = created.id;
+      const customerName = created.full_name;
+
+      push({
+        id: nanoid(),
+        emoji: '💡',
+        text: `Создать сделку для ${customerName}?`,
+        dismissLabel: 'Открыть сделки',
+        action: () => {
+          window.dispatchEvent(new CustomEvent('crm:new-deal', { detail: { customerId } }));
+        },
+      });
+
+      setTimeout(() => {
+        push({
+          id: nanoid(),
+          emoji: '💡',
+          text: `Поставить задачу "Первый контакт" для ${customerName}?`,
+          dismissLabel: 'Создать задачу',
+          action: () => {
+            window.dispatchEvent(new CustomEvent('crm:new-task', {
+              detail: { title: `Первый контакт — ${customerName}`, customerId },
+            }));
+          },
+        });
+      }, 800);
+    },
   });
 
   const { data: team } = useQuery<{ results: any[] }>({
@@ -278,7 +314,10 @@ export default function CustomersPage() {
                       <CheckboxIcon checked={isSel} />
                     </div>
                     <div onClick={() => navigate(`/customers/${c.id}`)}>
-                      <div style={{ fontWeight: 500 }}>{c.full_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontWeight: 500 }}>{c.full_name}</div>
+                        {c.health && <HealthScoreBadge score={c.health.score} band={c.health.band} />}
+                      </div>
                       {c.company_name && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.company_name}</div>}
                     </div>
                     <span onClick={() => navigate(`/customers/${c.id}`)} style={{ color: 'var(--color-text-secondary)' }}>{c.phone || '—'}</span>

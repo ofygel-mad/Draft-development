@@ -10,6 +10,7 @@ export interface Customer {
   tags:         string[];
   created_at:   string;
   updated_at:   string;
+  health?: { score: number; band: 'green' | 'yellow' | 'red'; factors?: Record<string, unknown> };
 }
 
 export const STATUS_LABELS: Record<Customer['status'], string> = {
