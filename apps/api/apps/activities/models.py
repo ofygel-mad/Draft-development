@@ -35,7 +35,7 @@ class Note(BaseModel):
 
     organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='notes')
     author = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='notes')
-    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, null=True, blank=True, related_name='notes')
+    customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, null=True, blank=True, related_name='activity_notes')
     deal = models.ForeignKey('deals.Deal', on_delete=models.CASCADE, null=True, blank=True, related_name='notes')
     body = models.TextField()
 
