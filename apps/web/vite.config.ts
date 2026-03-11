@@ -9,11 +9,15 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: ['crm-production-63fe.up.railway.app'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    allowedHosts: ['crm-production-63fe.up.railway.app'],
   },
 });
