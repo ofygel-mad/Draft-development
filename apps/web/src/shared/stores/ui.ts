@@ -6,8 +6,10 @@ type Theme = 'light' | 'dark' | 'system';
 interface UIStore {
   theme: Theme;
   sidebarCollapsed: boolean;
+  focusMode: boolean;
   setTheme: (t: Theme) => void;
   toggleSidebar: () => void;
+  toggleFocusMode: () => void;
 }
 
 function applyTheme(theme: Theme) {
@@ -23,11 +25,13 @@ export const useUIStore = create<UIStore>()(
     (set) => ({
       theme: 'system',
       sidebarCollapsed: false,
+      focusMode: false,
       setTheme: (theme) => {
         set({ theme });
         applyTheme(theme);
       },
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
     }),
     { name: 'crm-ui' },
   ),

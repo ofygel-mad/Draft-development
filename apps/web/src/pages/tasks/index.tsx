@@ -63,7 +63,7 @@ export default function TasksPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<TaskForm>({
+  const { register, handleSubmit, reset, setValue, formState: { isSubmitting } } = useForm<TaskForm>({
     defaultValues: { priority: 'medium' },
   });
 
@@ -79,14 +79,15 @@ export default function TasksPage() {
   });
 
   useEffect(() => {
-    const handler = (e?: Event) => {
-      const detail = (e as CustomEvent)?.detail;
-      if (detail?.customerId) reset({ customer_id: detail.customerId } as TaskForm);
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail ?? {};
       setDrawerOpen(true);
+      if (detail.title) reset({ ...{ priority: 'medium' }, title: detail.title });
+      if (detail.customerId) setValue('customer_id', detail.customerId);
     };
     window.addEventListener('crm:new-task', handler);
     return () => window.removeEventListener('crm:new-task', handler);
-  }, [reset]);
+  }, [reset, setValue]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

@@ -18,6 +18,8 @@ import { EmptyState } from '../../shared/ui/EmptyState';
 import { Drawer } from '../../shared/ui/Drawer';
 import { toast } from 'sonner';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { useSuggestionsStore } from '../../shared/stores/suggestions';
+import { nanoid } from 'nanoid';
 
 interface DealCard {
   id:string; title:string; amount?:number; currency:string; status:string;
@@ -175,7 +177,25 @@ export default function DealsPage() {
   const changeStage = useMutation({
     mutationFn: ({ dealId, stageId }:{ dealId:string; stageId:string }) =>
       api.post(`/deals/${dealId}/change_stage/`, { stage_id:stageId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey:['deals-board'] }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey:['deals-board'] });
+
+      const targetStage = board?.stages.find((s) => s.id === vars.stageId);
+      if (targetStage?.type === 'won') {
+        const deal = board?.stages.flatMap((s) => s.deals).find((d) => d.id === vars.dealId);
+        useSuggestionsStore.getState().push({
+          id: nanoid(),
+          emoji: '🎉',
+          text: `Сделка "${deal?.title ?? ''}" выиграна! Попросить отзыв?`,
+          dismissLabel: 'Создать задачу',
+          action: () => {
+            window.dispatchEvent(new CustomEvent('crm:new-task', {
+              detail: { title: `Попросить отзыв по "${deal?.title}"`, dealId: vars.dealId },
+            }));
+          },
+        });
+      }
+    },
     onError: () => toast.error('Ошибка при перемещении'),
   });
 

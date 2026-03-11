@@ -88,6 +88,7 @@ const ImportsPage = () => wrap(() => import('../../pages/imports'));
 const SettingsPage = () => wrap(() => import('../../pages/settings'));
 const AuditPage = () => wrap(() => import('../../pages/audit'));
 const AdminPage = () => wrap(() => import('../../pages/admin'));
+const FeedPage = () => wrap(() => import('../../pages/feed'));
 
 const router = createBrowserRouter([
   {
@@ -129,6 +130,7 @@ const router = createBrowserRouter([
           { path: 'customers/:id', element: <CustomerProfile /> },
           { path: 'deals', element: <DealsPage /> },
           { path: 'deals/:id', element: <DealProfile /> },
+          { path: 'feed', element: <FeedPage /> },
           { path: 'tasks', element: <TasksPage /> },
           { path: 'reports', element: <ReportsPage /> },
           { path: 'automations', element: <AutomationsPage /> },

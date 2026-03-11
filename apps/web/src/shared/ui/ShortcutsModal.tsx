@@ -5,6 +5,7 @@ const SHORTCUTS = [
   { key: 'N', description: 'Новый клиент' },
   { key: 'D', description: 'Новая сделка' },
   { key: 'T', description: 'Новая задача' },
+  { key: 'F', description: 'Режим фокуса (Focus Mode)' },
   { key: '/', description: 'Поиск (Command Palette)' },
   { key: '?', description: 'Показать шорткаты' },
   { key: 'Esc', description: 'Закрыть диалог' },
