@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -135,6 +135,12 @@ export default function DealsPage() {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string|null>(null);
   const [createDrawer, setCreateDrawer] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setCreateDrawer(true);
+    window.addEventListener('crm:new-deal', handler);
+    return () => window.removeEventListener('crm:new-deal', handler);
+  }, []);
 
   const { data: customers } = useQuery<{ results: Array<{ id: string; full_name: string }> }>({
     queryKey: ['customers-select'],
