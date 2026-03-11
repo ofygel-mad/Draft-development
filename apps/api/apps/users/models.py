@@ -76,3 +76,13 @@ class OrganizationMembership(models.Model):
 
     def __str__(self):
         return f'{self.user.email} → {self.role}'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        from django.core.cache import cache
+        cache.delete(f'user_role:{self.user_id}')
+
+    def delete(self, *args, **kwargs):
+        from django.core.cache import cache
+        cache.delete(f'user_role:{self.user_id}')
+        return super().delete(*args, **kwargs)

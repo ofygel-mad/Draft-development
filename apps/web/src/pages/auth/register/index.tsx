@@ -27,7 +27,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     try {
       const res: any = await api.post('/auth/register', data);
-      setAuth(res.user, res.org, res.access, res.capabilities ?? []);
+      setAuth(res.user, res.org, res.access, res.capabilities ?? [], res.role ?? 'viewer');
       navigate('/onboarding');
     } catch (e: any) {
       toast.error(e?.response?.data?.detail ?? 'Ошибка регистрации');

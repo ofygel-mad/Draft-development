@@ -1,20 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/client';
+import { useAuthStore } from '../stores/auth';
 
 type Role = 'owner' | 'admin' | 'manager' | 'viewer';
 
 export function useRole() {
-  const { data } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => api.get('/users/me/'),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const role: Role = (data as any)?.role ?? 'viewer';
+  const role = (useAuthStore((s) => s.role) ?? 'viewer') as Role;
 
   const isOwner = role === 'owner';
   const isAdmin = role === 'owner' || role === 'admin';
   const isManager = isAdmin || role === 'manager';
+  const isViewer = role === 'viewer';
 
-  return { role, isOwner, isAdmin, isManager };
+  return { role, isOwner, isAdmin, isManager, isViewer };
 }

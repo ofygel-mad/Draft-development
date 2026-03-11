@@ -35,9 +35,9 @@ const VARIANTS: Record<string, CSSProperties> = {
 
 const SIZES: Record<string, CSSProperties> = {
   xs: { padding: '3px 8px', fontSize: 11, height: 26, borderRadius: 'var(--radius-sm)' },
-  sm: { padding: '5px 11px', fontSize: 12, height: 30, borderRadius: 'var(--radius-sm)' },
-  md: { padding: '7px 14px', fontSize: 13, height: 36, borderRadius: 'var(--radius-md)' },
-  lg: { padding: '10px 20px', fontSize: 14, height: 44, borderRadius: 'var(--radius-md)' },
+  sm: { padding: '5px 12px', fontSize: 13, height: 32, borderRadius: 'var(--radius-sm)' },
+  md: { padding: '8px 16px', fontSize: 14, height: 40, borderRadius: 'var(--radius-md)' },
+  lg: { padding: '10px 22px', fontSize: 14, height: 44, borderRadius: 'var(--radius-md)' },
 };
 
 export function Button({

@@ -23,6 +23,7 @@ class DashboardSummaryView(APIView):
         from apps.customers.models import Customer
         from apps.deals.models import Deal
         from apps.tasks.models import Task
+        from apps.activities.models import Activity
 
         org         = request.user.organization
         now         = timezone.now()
@@ -36,6 +37,32 @@ class DashboardSummaryView(APIView):
         revenue              = Deal.objects.filter(organization=org, status='won', closed_at__gte=month_start).aggregate(t=Sum('amount'))['t'] or 0
         tasks_today          = Task.objects.filter(organization=org, assigned_to=request.user, status='open', due_at__date=now.date()).count()
         overdue_tasks        = Task.objects.filter(organization=org, assigned_to=request.user, status='open', due_at__lt=now).count()
+
+        three_days_ago = now - timedelta(days=3)
+        active_deal_ids = list(Deal.objects.filter(organization=org, status='open', deleted_at__isnull=True).values_list('id', flat=True))
+        deals_with_recent = Activity.objects.filter(
+            organization=org,
+            deal_id__in=active_deal_ids,
+            created_at__gte=three_days_ago,
+        ).values_list('deal_id', flat=True).distinct().count()
+        deals_no_activity = max(len(active_deal_ids) - deals_with_recent, 0)
+
+        today_tasks_qs = Task.objects.filter(
+            organization=org,
+            assigned_to=request.user,
+            status='open',
+            due_at__date=now.date(),
+        ).select_related('customer').order_by('due_at')[:5]
+        today_tasks_list = [
+            {
+                'id': str(t.id),
+                'title': t.title,
+                'priority': t.priority,
+                'due_at': t.due_at.isoformat() if t.due_at else None,
+                'customer': {'id': str(t.customer_id), 'full_name': t.customer.full_name} if t.customer else None,
+            }
+            for t in today_tasks_qs
+        ]
 
         deals_by_stage = list(Deal.objects.filter(organization=org, status='open').values('stage__name').annotate(count=Count('id'), amount=Sum('amount')).order_by('-amount')[:10])
         customers_by_source = list(Customer.objects.filter(organization=org, deleted_at__isnull=True).values('source').annotate(count=Count('id')).order_by('-count')[:8])
@@ -54,6 +81,8 @@ class DashboardSummaryView(APIView):
             'revenue_delta':     0,
             'tasks_today':       tasks_today,
             'overdue_tasks':     overdue_tasks,
+            'deals_no_activity': deals_no_activity,
+            'today_tasks':       today_tasks_list,
             'recent_customers':  list(Customer.objects.filter(organization=org, deleted_at__isnull=True).order_by('-created_at').values('id', 'full_name', 'company_name', 'status', 'created_at')[:5]),
             'deals_by_stage':    [{'stage': d['stage__name'] or 'Без этапа', 'count': d['count'], 'amount': float(d['amount'] or 0)} for d in deals_by_stage],
             'customers_by_source': [{'source': c['source'] or 'Не указан', 'count': c['count']} for c in customers_by_source],

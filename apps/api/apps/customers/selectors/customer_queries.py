@@ -1,5 +1,6 @@
 from apps.customers.models import Customer
 from django.db.models import QuerySet, Q
+import re
 
 
 def list_customers(
@@ -14,12 +15,15 @@ def list_customers(
 ) -> QuerySet:
     qs = Customer.objects.filter(organization_id=organization_id, deleted_at__isnull=True)
     if search:
-        qs = qs.filter(
+        phone_normalized = re.sub(r'[\s\-\(\)\+]', '', search)
+        q = (
             Q(full_name__icontains=search)
             | Q(company_name__icontains=search)
-            | Q(phone__icontains=search)
             | Q(email__icontains=search)
         )
+        if phone_normalized:
+            q |= Q(phone__icontains=phone_normalized)
+        qs = qs.filter(q)
     if status:
         qs = qs.filter(status=status)
     if source:

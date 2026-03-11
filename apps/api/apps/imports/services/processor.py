@@ -43,6 +43,17 @@ class ImportProcessor:
 
     def _import_customers(self, rows: list, mapping: dict) -> dict[str, Any]:
         from apps.customers.models import Customer
+        from django.db.models import Q
+
+        def _is_duplicate(org_id, phone, email):
+            if not phone and not email:
+                return False
+            q = Q(organization_id=org_id)
+            if phone:
+                q &= Q(phone=phone)
+            elif email:
+                q &= Q(email=email)
+            return Customer.objects.filter(q, deleted_at__isnull=True).exists()
 
         created = updated = 0
         errors = []
@@ -68,6 +79,10 @@ class ImportProcessor:
 
                 if not data.get('full_name') and not data.get('phone'):
                     errors.append({'row': row_idx + 2, 'error': 'Нет имени и телефона'})
+                    continue
+
+                if _is_duplicate(self.job.organization_id, data.get('phone'), data.get('email')):
+                    updated += 1
                     continue
 
                 lookup = {}

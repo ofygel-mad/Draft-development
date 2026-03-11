@@ -86,7 +86,7 @@ class DealViewSet(viewsets.ModelViewSet):
             organization=org,
             pipeline=pipeline,
             deleted_at__isnull=True,
-        ).select_related('customer', 'owner', 'stage')
+        ).select_related('customer', 'owner', 'stage').prefetch_related('activities', 'tasks')
 
         by_stage: dict = {}
         for d in deals:

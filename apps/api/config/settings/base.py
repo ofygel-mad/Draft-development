@@ -118,7 +118,7 @@ REST_FRAMEWORK = {
         'anon': '30/min',
         'user': '2000/hour',
         'auth': '10/min',
-        'import': '20/hour',
+        'import': '5/minute',
     },
     'DEFAULT_PAGINATION_CLASS': 'apps.core.pagination.StandardPagination',
     'DEFAULT_FILTER_BACKENDS': [
@@ -127,7 +127,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'EXCEPTION_HANDLER': 'apps.core.exceptions.crm_exception_handler',
+    'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
 }
 
@@ -201,3 +201,7 @@ if SENTRY_DSN:
         environment=os.getenv('DJANGO_ENV', 'development'),
         send_default_pii=False,
     )
+
+
+from config.logging import LOGGING_CONFIG
+LOGGING = LOGGING_CONFIG

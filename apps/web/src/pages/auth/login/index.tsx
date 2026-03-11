@@ -15,7 +15,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     try {
       const res: any = await api.post('/auth/login', data);
-      setAuth(res.user, res.org, res.access, res.capabilities ?? []);
+      setAuth(res.user, res.org, res.access, res.capabilities ?? [], res.role ?? 'viewer');
       navigate('/');
     } catch (e: any) {
       toast.error(e?.response?.data?.detail ?? 'Ошибка входа');

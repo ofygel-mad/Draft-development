@@ -117,7 +117,7 @@ const BREADCRUMBS: Record<string, string> = {
   '/imports': 'Импорт', '/settings': 'Настройки', '/audit': 'Аудит',
 };
 
-export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNode }) {
+export function Topbar() {
   const location = useLocation();
   const navigate  = useNavigate();
   const { toggle } = useCommandPalette();
@@ -139,7 +139,6 @@ export function Topbar({ mobileMenuButton }: { mobileMenuButton?: React.ReactNod
     }}>
       {/* Left: hamburger + breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-        {mobileMenuButton}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13,
           color: 'var(--color-text-secondary)', minWidth: 0 }}>
           {!isMobile && <span style={{ color: 'var(--color-text-muted)' }}>CRM</span>}

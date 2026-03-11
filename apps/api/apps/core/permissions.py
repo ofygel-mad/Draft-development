@@ -1,4 +1,5 @@
 from rest_framework.permissions import BasePermission
+from django.core.cache import cache
 
 
 ROLE_PERMS: dict[str, set[str]] = {
@@ -20,12 +21,19 @@ ROLE_PERMS: dict[str, set[str]] = {
 
 
 def get_user_role(user) -> str:
+    cache_key = f'user_role:{user.id}'
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
     from apps.users.models import OrganizationMembership
 
     m = OrganizationMembership.objects.filter(
         user=user, organization=user.organization,
     ).values_list('role', flat=True).first()
-    return m or 'viewer'
+    role = m or 'viewer'
+    cache.set(cache_key, role, timeout=300)
+    return role
 
 
 def user_can(user, permission: str) -> bool:

@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 from ..serializers import UserSerializer
 from ..services.register import register_organization
 from apps.organizations.serializers import OrganizationSerializer
+from apps.core.permissions import get_user_role
 
 
 class RegisterView(APIView):
@@ -41,12 +42,14 @@ class RegisterView(APIView):
 
         refresh = RefreshToken.for_user(user)
         caps = list(org.capabilities.filter(enabled=True).values_list('capability_code', flat=True))
+        role = get_user_role(user)
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
             'user': UserSerializer(user).data,
             'org': OrganizationSerializer(org).data,
             'capabilities': caps,
+            'role': role,
         }, status=201)
 
 
@@ -65,12 +68,14 @@ class LoginView(APIView):
         refresh = RefreshToken.for_user(user)
         org = user.organization
         caps = list(org.capabilities.filter(enabled=True).values_list('capability_code', flat=True)) if org else []
+        role = get_user_role(user) if org else 'viewer'
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
             'user': UserSerializer(user).data,
             'org': OrganizationSerializer(org).data if org else None,
             'capabilities': caps,
+            'role': role,
         })
 
 
@@ -81,9 +86,11 @@ class MeView(APIView):
         user = request.user
         org = user.organization
         caps = list(org.capabilities.filter(enabled=True).values_list('capability_code', flat=True)) if org else []
+        role = get_user_role(user) if org else 'viewer'
         return Response({
             'user': UserSerializer(user).data,
             'org': OrganizationSerializer(org).data if org else None,
             'capabilities': caps,
             'mode': org.mode if org else 'basic',
+            'role': role,
         })
