@@ -1,10 +1,13 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.core.permissions import HasRolePerm, IsOrgAdmin, get_user_role
 from apps.users.models import OrganizationMembership
-from apps.core.permissions import IsOrgAdmin, get_user_role
 from ..models import User
 from ..serializers import UserSerializer
 
@@ -121,10 +124,6 @@ class UserViewSet(viewsets.ModelViewSet):
         target.save(update_fields=['status'])
         return Response({'detail': 'Пользователь активирован'})
 
-
-from django.utils import timezone
-from rest_framework.views import APIView
-from apps.core.permissions import HasRolePerm
 
 
 class PresenceHeartbeatView(APIView):

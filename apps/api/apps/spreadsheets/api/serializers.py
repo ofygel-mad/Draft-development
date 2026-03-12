@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.spreadsheets.models import SpreadsheetDocument
+from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetSyncJob
 from apps.spreadsheets.services.upload_spreadsheet import upload_spreadsheet
 
 
@@ -33,9 +33,6 @@ class SpreadsheetUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return upload_spreadsheet(**validated_data).document
-
-
-from apps.spreadsheets.models import SpreadsheetMapping, SpreadsheetSyncJob
 
 
 class SpreadsheetMappingReviewSerializer(serializers.Serializer):

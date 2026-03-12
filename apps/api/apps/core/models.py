@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -21,8 +22,6 @@ class UUIDModel(models.Model):
 class BaseModel(UUIDModel, TimeStampedModel):
     class Meta:
         abstract = True
-
-from django.conf import settings
 
 
 class IdempotencyKey(models.Model):
