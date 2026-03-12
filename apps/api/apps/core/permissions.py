@@ -13,8 +13,8 @@ ROLE_PERMS: dict[str, set[str]] = {
     'manager': {
         'customers.read', 'customers.create', 'customers.update',
         'deals.read', 'deals.create', 'deals.update', 'deals.change_stage',
-        'tasks.*', 'reports.basic', 'imports.upload', 'spreadsheets.read',
-        'spreadsheets.upload', 'spreadsheets.map', 'spreadsheets.sync',
+        'tasks.*', 'reports.read', 'imports.read', 'imports.upload', 'spreadsheets.read',
+        'spreadsheets.upload', 'spreadsheets.sync',
         'bulk.read', 'bulk.update', 'presence.read',
     },
     'viewer': {

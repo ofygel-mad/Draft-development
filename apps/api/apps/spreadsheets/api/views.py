@@ -11,19 +11,21 @@ from apps.spreadsheets.api.serializers import (
     SpreadsheetSyncRequestSerializer,
     SpreadsheetSyncJobSerializer,
 )
-from apps.spreadsheets.models import SpreadsheetDocument
 from apps.spreadsheets.services.upload.upload_workbook import upload_workbook
 from apps.spreadsheets.services.sync.run_sync import run_sync
+from apps.spreadsheets.selectors.document_queries import (
+    get_spreadsheet_for_user,
+    list_spreadsheets_for_user,
+)
 
 
 class SpreadsheetDocumentListView(generics.ListAPIView):
     serializer_class = SpreadsheetDocumentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'spreadsheets.read'
 
     def get_queryset(self):
-        return SpreadsheetDocument.objects.filter(
-            organization_id=self.request.user.organization_id,
-        ).order_by('-created_at')
+        return list_spreadsheets_for_user(user=self.request.user)
 
 
 class SpreadsheetUploadView(APIView):
@@ -76,7 +78,7 @@ class SpreadsheetAnalysisPreviewView(APIView):
     required_perm = 'spreadsheets.read'
 
     def get(self, request, pk):
-        document = SpreadsheetDocument.objects.get(pk=pk, organization_id=request.user.organization_id)
+        document = get_spreadsheet_for_user(user=request.user, spreadsheet_id=pk)
         return Response(SpreadsheetAnalysisPreviewSerializer(document).data)
 
 
@@ -87,7 +89,10 @@ class SpreadsheetSyncView(APIView):
     def post(self, request):
         serializer = SpreadsheetSyncRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        document = SpreadsheetDocument.objects.get(pk=serializer.validated_data['document_id'])
+        document = get_spreadsheet_for_user(
+            user=request.user,
+            spreadsheet_id=serializer.validated_data['document_id'],
+        )
         job = run_sync(
             document=document,
             mapping_revision=serializer.validated_data['mapping_revision'],

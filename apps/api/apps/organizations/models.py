@@ -62,7 +62,7 @@ MODE_CAPABILITIES = {
         'customers.read', 'customers.create', 'customers.update',
         'deals.read', 'deals.create', 'deals.update',
         'tasks.read', 'tasks.create', 'tasks.update',
-        'activities.read', 'reports.basic', 'imports.customers', 'customers.import',
+        'activities.read', 'reports.read', 'imports.read', 'imports.upload', 'customers.import',
     ],
     'advanced': [
         'automations.manage', 'pipelines.multi', 'roles.manage',
