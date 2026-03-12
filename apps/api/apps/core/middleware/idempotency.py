@@ -36,7 +36,8 @@ class IdempotencyKeyMiddleware(MiddlewareMixin):
         if existing and existing.request_hash != request_hash:
             return JsonResponse({'detail': 'Idempotency-Key reused with different payload.'}, status=409)
         if existing and existing.response_code:
-            return JsonResponse(existing.response_body, status=existing.response_code)
+            replay_status = 200 if existing.response_code == 201 else existing.response_code
+            return JsonResponse(existing.response_body, status=replay_status)
         request.idempotency_key = key
         request.idempotency_hash = request_hash
         return None
