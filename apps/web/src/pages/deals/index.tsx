@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '../../shared/api/client';
 import { useAuthStore } from '../../shared/stores/auth';
-import { formatNumber, currencySymbol } from '../../shared/utils/format';
+import { formatMoney } from '../../shared/utils/format';
 import { PageHeader } from '../../shared/ui/PageHeader';
 import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
@@ -69,7 +69,7 @@ function DealCardItem({ deal, isDragging }: { deal:DealCard; isDragging?:boolean
       )}
       {deal.amount && (
         <div style={{ fontSize:14, fontWeight:700, color:'var(--color-amber)', fontFamily:'var(--font-display)' }}>
-          {formatNumber(deal.amount)} {currencySymbol(deal.currency || orgCurrency)}
+          {formatMoney(deal.amount, deal.currency || orgCurrency)}
         </div>
       )}
     </motion.div>
@@ -119,7 +119,7 @@ function KanbanColumn({ stage, isLoading }: { stage:Stage; isLoading?:boolean })
         </div>
         {total > 0 && (
           <div style={{ fontSize:12, color:'var(--color-text-muted)', paddingLeft:16 }}>
-            {formatNumber(total)} {currencySymbol(orgCurrency)}
+            {formatMoney(total, orgCurrency)}
           </div>
         )}
       </div>

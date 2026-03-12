@@ -35,7 +35,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { CustomFieldsTab } from "../../../shared/ui/CustomFieldsTab";
 import { ru } from "date-fns/locale";
 import { formatPhoneForWhatsApp } from "../../../shared/utils/kz";
-import { currencySymbol, formatNumber } from "../../../shared/utils/format";
+import { formatMoney } from "../../../shared/utils/format";
 import { AiAssistant } from "../../../widgets/ai-assistant/AiAssistant";
 import { useCopyToClipboard } from '../../../shared/hooks/useCopyToClipboard';
 import { useDocumentTitle } from '../../../shared/hooks/useDocumentTitle';
@@ -876,8 +876,7 @@ export default function CustomerProfilePage() {
                                 fontFamily: "var(--font-display)",
                               }}
                             >
-                              {formatNumber(deal.amount)}{" "}
-                              {currencySymbol(deal.currency)}
+                              {formatMoney(deal.amount, deal.currency)}
                             </span>
                           )}
                         </div>
@@ -1092,8 +1091,7 @@ export default function CustomerProfilePage() {
                             fontFamily: "var(--font-display)",
                           }}
                         >
-                          {formatNumber(deal.amount)}{" "}
-                          {currencySymbol(deal.currency)}
+                          {formatMoney(deal.amount, deal.currency)}
                         </span>
                       )}
                     </motion.div>
