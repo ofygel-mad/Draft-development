@@ -26,6 +26,8 @@ import {
   Zap,
   Key,
   Copy,
+  Plus,
+  MessageSquare,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { api } from "../../shared/api/client";
@@ -152,6 +154,7 @@ const SECTIONS = [
   { key: "mode", label: "Режим CRM", icon: <Shield size={16} /> },
   { key: "integrations", label: "Интеграции", icon: <Globe size={16} /> },
   { key: "webhooks", label: "Webhooks", icon: <Zap size={16} /> },
+  { key: "templates", label: "Шаблоны сообщений", icon: <MessageSquare size={16} /> },
   { key: "api", label: "API токены", icon: <Key size={16} /> },
 ];
 
@@ -1075,9 +1078,68 @@ function ApiTokensSection() {
 }
 
 
+function MessageTemplatesSection() {
+  const qc = useQueryClient();
+  const [name, setName] = useState('');
+  const [channel, setChannel] = useState('general');
+  const [body, setBody] = useState('');
+  const [shortcut, setShortcut] = useState('');
+  const { data } = useQuery<{ results: any[] }>({
+    queryKey: ['message-templates'],
+    queryFn: () => api.get('/message-templates/'),
+  });
+  const createMut = useMutation({
+    mutationFn: () => api.post('/message-templates/', { name, channel, body, shortcut }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['message-templates'] });
+      setName(''); setBody(''); setShortcut('');
+      toast.success('Создано');
+    },
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.delete(`/message-templates/${id}/`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['message-templates'] });
+      toast.success('Удалено');
+    },
+  });
+  const templates = data?.results ?? [];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>Шаблоны сообщений</div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название" className="crm-input" />
+        <select value={channel} onChange={(e) => setChannel(e.target.value)} className="crm-input">
+          <option value="general">Общий</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="email">Email</option>
+          <option value="call">Звонок</option>
+        </select>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Текст" className="crm-textarea" />
+        <input value={shortcut} onChange={(e) => setShortcut(e.target.value)} placeholder="/shortcut" className="crm-input" />
+        <div><Button size="sm" icon={<Plus size={13} />} onClick={() => createMut.mutate()} disabled={!name || !body}>Добавить шаблон</Button></div>
+      </div>
+      {templates.map((t) => (
+        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{t.name} <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{t.shortcut}</span></div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.body}</div>
+          </div>
+          <button onClick={() => deleteMut.mutate(t.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 export default function SettingsPage() {
   useDocumentTitle('Настройки');
   const [activeSection, setActiveSection] = useState("organization");
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'templates') setActiveSection('templates');
+  }, []);
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -1151,6 +1213,7 @@ export default function SettingsPage() {
             {activeSection === "pipelines" && <PipelinesSection />}
             {activeSection === "integrations" && <IntegrationsSection />}
             {activeSection === "webhooks" && <WebhooksSection />}
+            {activeSection === "templates" && <MessageTemplatesSection />}
             {activeSection === "api" && <ApiTokensSection />}
           </motion.div>
         </AnimatePresence>

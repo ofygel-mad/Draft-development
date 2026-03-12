@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from apps.core.models import BaseModel
 
@@ -54,3 +56,59 @@ class Note(BaseModel):
 
     def __str__(self):
         return f'Note by {self.author_id} on {self.created_at.date()}'
+
+
+class MessageTemplate(models.Model):
+    """Шаблоны сообщений для быстрых коммуникаций."""
+
+    class Channel(models.TextChoices):
+        WHATSAPP = 'whatsapp', 'WhatsApp'
+        EMAIL = 'email', 'Email'
+        CALL = 'call', 'Звонок'
+        GENERAL = 'general', 'Общий'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        related_name='message_templates',
+    )
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='+',
+    )
+    channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.GENERAL)
+    name = models.CharField(max_length=255)
+    body = models.TextField(help_text='Поддерживает {{customer.full_name}}, {{deal.title}}, {{manager.full_name}}')
+    shortcut = models.CharField(max_length=30, blank=True, help_text='/shortcut')
+    is_active = models.BooleanField(default=True)
+    use_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'message_templates'
+        ordering = ['-use_count', 'name']
+        indexes = [
+            models.Index(fields=['organization', 'channel', 'is_active']),
+            models.Index(fields=['organization', 'shortcut']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def render(self, context: dict) -> str:
+        """Простая интерполяция {{key}} → value."""
+        import re
+
+        flat: dict[str, str] = {}
+        for section, data in context.items():
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    normalized = str(value) if value is not None else ''
+                    flat[f'{section}.{key}'] = normalized
+                    flat[key] = normalized
+
+        return re.sub(r'\{\{(.+?)\}\}', lambda m: flat.get(m.group(1).strip(), m.group(0)), self.body)

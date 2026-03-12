@@ -1,9 +1,12 @@
+from django.db import models
+from rest_framework.decorators import action
 from rest_framework.generics import ListCreateAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
 
-from ..models import Activity, Note
-from ..serializers import ActivitySerializer
+from ..models import Activity, MessageTemplate, Note
+from ..serializers import ActivitySerializer, MessageTemplateSerializer
 
 
 class ActivityListView(ListCreateAPIView):
@@ -70,8 +73,49 @@ class ActivityListView(ListCreateAPIView):
         return Response(ActivitySerializer(activity).data, status=201)
 
 
+class MessageTemplateViewSet(ModelViewSet):
+    """CRUD для шаблонов сообщений."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageTemplateSerializer
+
+    def get_queryset(self):
+        qs = MessageTemplate.objects.filter(
+            organization=self.request.user.organization,
+            is_active=True,
+        )
+        channel = self.request.query_params.get('channel')
+        if channel:
+            qs = qs.filter(channel=channel)
+        q = self.request.query_params.get('q')
+        if q:
+            qs = qs.filter(name__icontains=q)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(
+            organization=self.request.user.organization,
+            created_by=self.request.user,
+        )
+
+    @action(detail=True, methods=['post'], url_path='use')
+    def mark_used(self, request, pk=None):
+        tpl = self.get_object()
+        MessageTemplate.objects.filter(pk=tpl.pk).update(use_count=models.F('use_count') + 1)
+        return Response({'ok': True})
+
+    @action(detail=True, methods=['post'], url_path='render')
+    def render_template(self, request, pk=None):
+        tpl = self.get_object()
+        ctx = request.data.get('context', {})
+        rendered = tpl.render(ctx)
+        MessageTemplate.objects.filter(pk=tpl.pk).update(use_count=models.F('use_count') + 1)
+        return Response({'rendered': rendered})
+
+
 class FeedView(ListAPIView):
     """Глобальная лента всех событий организации."""
+
     permission_classes = [IsAuthenticated]
     serializer_class = ActivitySerializer
 

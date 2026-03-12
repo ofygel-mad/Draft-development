@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,6 +53,10 @@ interface CustomerDetail {
   notes: string;
   created_at: string;
   updated_at: string;
+  last_contact_at?: string | null;
+  follow_up_due_at?: string | null;
+  response_state?: string;
+  next_action_note?: string;
 }
 interface Activity {
   id: string;
@@ -251,6 +255,91 @@ interface NoteFormData {
   duration_minutes?: number;
 }
 
+
+
+const RESPONSE_STATES: Record<string, { label: string; color: string; bg: string }> = {
+  waiting_reply: { label: 'Ждём ответа', color: '#D97706', bg: '#FEF3C7' },
+  replied: { label: 'Ответил', color: '#065F46', bg: '#D1FAE5' },
+  no_response: { label: 'Не отвечает', color: '#991B1B', bg: '#FEE2E2' },
+  not_contacted: { label: 'Не связались', color: '#6B7280', bg: '#F3F4F6' },
+};
+
+function FollowUpBar({ customer, onUpdated }: { customer: CustomerDetail; onUpdated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [dueDate, setDueDate] = useState('');
+  const [state, setState] = useState(customer.response_state ?? '');
+  const [note, setNote] = useState('');
+  const qc = useQueryClient();
+  useEffect(() => { setState(customer.response_state ?? ''); }, [customer.response_state]);
+
+  const mutation = useMutation({
+    mutationFn: () => api.post(`/customers/${customer.id}/follow-up/`, {
+      follow_up_due_at: dueDate || null,
+      response_state: state,
+      note,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customer', customer.id] });
+      qc.invalidateQueries({ queryKey: ['customer-activities', customer.id] });
+      toast.success('Follow-up сохранён');
+      setOpen(false);
+      setNote('');
+      onUpdated();
+    },
+  });
+
+  const rs = RESPONSE_STATES[customer.response_state ?? ''];
+  const isOverdue = !!(customer.follow_up_due_at && new Date(customer.follow_up_due_at) < new Date());
+
+  return <div style={{ marginBottom: 12 }}>
+    <div onClick={() => setOpen((v) => !v)} style={{ display:'flex', gap:8, alignItems:'center', padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:'var(--radius-md)', cursor:'pointer', background: isOverdue ? '#FFF1F1' : 'var(--color-bg-muted)' }}>
+      <span style={{ fontSize: 13 }}>🎯</span>
+      <div style={{ flex:1, fontSize:12 }}>Follow-up {customer.follow_up_due_at && <span style={{ color: isOverdue ? '#EF4444' : 'var(--color-text-muted)' }}>{format(new Date(customer.follow_up_due_at), 'd MMM HH:mm', { locale: ru })}</span>}</div>
+      {rs && <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius: 99, color: rs.color, background: rs.bg }}>{rs.label}</span>}
+    </div>
+    <AnimatePresence>{open && <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}} style={{overflow:'hidden'}}>
+      <div style={{ padding: 12, border:'1px solid var(--color-border)', borderTop:'none', borderRadius:'0 0 var(--radius-md) var(--radius-md)', display:'grid', gap:8 }}>
+        <input type="datetime-local" value={dueDate} onChange={(e)=>setDueDate(e.target.value)} className="crm-input" />
+        <select value={state} onChange={(e)=>setState(e.target.value)} className="crm-input">
+          <option value="">— не указан —</option>
+          {Object.entries(RESPONSE_STATES).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Заметка" className="crm-textarea" style={{ minHeight: 52 }} />
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+          <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>Отмена</Button>
+          <Button size="sm" loading={mutation.isPending} onClick={() => mutation.mutate()}>Сохранить</Button>
+        </div>
+      </div>
+    </motion.div>}</AnimatePresence>
+  </div>;
+}
+
+function TemplateQuickPick({ channel, onSelect }: { channel: string; onSelect: (body: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const { data } = useQuery<{ results: Array<{ id: string; name: string; body: string; shortcut: string }> }>({
+    queryKey: ['msg-templates', channel],
+    queryFn: () => api.get('/message-templates/', { channel }),
+    enabled: open,
+    staleTime: 30_000,
+  });
+  const templates = data?.results ?? [];
+  const filtered = q ? templates.filter((t) => t.name.toLowerCase().includes(q.toLowerCase()) || (t.shortcut || '').includes(q)) : templates;
+  if (!open) return <button type="button" onClick={() => setOpen(true)} style={{ fontSize: 11, border: '1px solid var(--color-amber)', borderRadius:'var(--radius-sm)', background:'none', color:'var(--color-amber)', padding:'2px 8px' }}>📋 Шаблон</button>;
+  return <div style={{ border:'1px solid var(--color-border)', borderRadius:'var(--radius-md)', background:'var(--color-bg-elevated)' }}>
+    <div style={{ display:'flex', gap:6, padding:'6px 8px', borderBottom:'1px solid var(--color-border)' }}>
+      <input autoFocus value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск" className="crm-input" style={{ flex:1, fontSize:12, height:28 }} />
+      <button type="button" onClick={() => setOpen(false)} style={{ background:'none', border:'none' }}>✕</button>
+    </div>
+    <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+      {filtered.map((t) => <button key={t.id} type="button" onClick={() => { onSelect(t.body); setOpen(false); api.post(`/message-templates/${t.id}/use/`); }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderBottom:'1px solid var(--color-border)', padding:'8px 10px' }}>
+        <div style={{ fontSize:12, fontWeight:600 }}>{t.name} <span style={{ fontSize:10, color:'var(--color-text-muted)' }}>{t.shortcut}</span></div>
+        <div style={{ fontSize:11, color:'var(--color-text-muted)' }}>{t.body.slice(0, 80)}</div>
+      </button>)}
+    </div>
+  </div>;
+}
+
 const TYPE_LABELS: Record<NoteType, string> = {
   note: "💬 Заметка",
   call: "📞 Звонок",
@@ -272,6 +361,7 @@ function NoteForm({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting },
   } = useForm<NoteFormData>({ defaultValues: { type: "note" } });
   const noteType = watch("type");
@@ -320,6 +410,12 @@ function NoteForm({
             {TYPE_LABELS[t]}
           </label>
         ))}
+        <div style={{ marginLeft: "auto" }}>
+          <TemplateQuickPick
+            channel={noteType === "email_sent" ? "email" : noteType === "call" ? "call" : noteType}
+            onSelect={(body) => setValue("body", body)}
+          />
+        </div>
       </div>
 
       {noteType === "email_sent" && (
@@ -695,6 +791,10 @@ export default function CustomerProfilePage() {
                 gap: 16,
               }}
             >
+              <FollowUpBar
+                customer={customer}
+                onUpdated={() => qc.invalidateQueries({ queryKey: ["customer", id] })}
+              />
               <div
                 style={{
                   background: "var(--color-bg-elevated)",

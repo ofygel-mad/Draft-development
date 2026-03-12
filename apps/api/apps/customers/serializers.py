@@ -25,4 +25,5 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ['id', 'full_name', 'company_name', 'phone', 'email',
                   'bin_iin', 'source', 'status', 'notes', 'tags', 'owner',
-                  'created_at', 'updated_at']
+                  'created_at', 'updated_at', 'last_contact_at',
+                  'follow_up_due_at', 'response_state', 'next_action_note']

@@ -2,8 +2,8 @@ from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
 
 class GlobalSearchView(APIView):
@@ -13,8 +13,8 @@ class GlobalSearchView(APIView):
 
     def get(self, request):
         q = request.query_params.get('q', '').strip()
-        types = request.query_params.get('types', 'customers,deals,tasks').split(',')
-        limit = min(int(request.query_params.get('limit', 5)), 10)
+        limit = min(int(request.query_params.get('limit', 8)), 20)
+        types = request.query_params.get('types', '').split(',') if request.query_params.get('types') else []
         org = request.user.organization
 
         if len(q) < 2:
@@ -22,36 +22,32 @@ class GlobalSearchView(APIView):
 
         results = []
 
-        if 'customers' in types:
+        if not types or 'customer' in types or 'customers' in types:
             from apps.customers.models import Customer
 
             sq = SearchQuery(q, config='russian')
-            qs = (
-                Customer.objects.filter(
-                    organization=org,
-                    deleted_at__isnull=True,
-                )
-                .filter(
-                    Q(search_vector=sq)
-                    | Q(phone__icontains=q)
-                    | Q(email__icontains=q)
-                )
-                .annotate(rank=SearchRank('search_vector', sq))
-                .order_by('-rank')
-                .values('id', 'full_name', 'company_name', 'phone', 'status')[:limit]
-            )
+            qs = Customer.objects.filter(
+                organization=org,
+                deleted_at__isnull=True,
+            ).filter(
+                Q(search_vector=sq) | Q(phone__icontains=q) | Q(email__icontains=q)
+            ).annotate(rank=SearchRank('search_vector', sq)).order_by('-rank')[:limit]
 
             for c in qs:
                 results.append({
-                    'id': str(c['id']),
+                    'id': str(c.id),
                     'type': 'customer',
-                    'label': c['full_name'],
-                    'sublabel': c['company_name'] or c['phone'] or '',
-                    'status': c['status'],
-                    'path': f"/customers/{c['id']}",
+                    'label': c.full_name,
+                    'sublabel': c.company_name or c.phone or '',
+                    'path': f'/customers/{c.id}',
+                    'meta': {
+                        'status': c.status,
+                        'follow_up_due_at': c.follow_up_due_at.isoformat() if c.follow_up_due_at else None,
+                        'response_state': c.response_state,
+                    },
                 })
 
-        if 'deals' in types:
+        if not types or 'deal' in types or 'deals' in types:
             from apps.deals.models import Deal
 
             qs = Deal.objects.filter(
@@ -59,38 +55,43 @@ class GlobalSearchView(APIView):
                 deleted_at__isnull=True,
             ).filter(
                 Q(title__icontains=q) | Q(customer__full_name__icontains=q)
-            ).select_related('customer', 'stage').values(
-                'id', 'title', 'amount', 'currency', 'status',
-                'customer__full_name', 'stage__name',
-            )[:limit]
+            ).select_related('stage', 'customer')[:limit]
 
             for d in qs:
                 results.append({
-                    'id': str(d['id']),
+                    'id': str(d.id),
                     'type': 'deal',
-                    'label': d['title'],
-                    'sublabel': d['customer__full_name'] or '',
-                    'status': d['status'],
-                    'path': f"/deals/{d['id']}",
+                    'label': d.title,
+                    'sublabel': f"{d.stage.name if d.stage_id else ''} · {d.customer.full_name if d.customer_id else ''}",
+                    'path': f'/deals/{d.id}',
+                    'meta': {
+                        'amount': float(d.amount or 0),
+                        'currency': d.currency,
+                        'status': d.status,
+                    },
                 })
 
-        if 'tasks' in types:
+        if not types or 'task' in types or 'tasks' in types:
             from apps.tasks.models import Task
 
             qs = Task.objects.filter(
                 organization=org,
-                status='open',
-            ).filter(
-                Q(title__icontains=q) | Q(description__icontains=q)
-            ).values('id', 'title', 'priority', 'due_at')[:limit]
+                status=Task.Status.OPEN,
+            ).filter(Q(title__icontains=q)).select_related('customer', 'assigned_to')[:limit]
 
             for t in qs:
                 results.append({
-                    'id': str(t['id']),
+                    'id': str(t.id),
                     'type': 'task',
-                    'label': t['title'],
-                    'sublabel': t['priority'],
+                    'label': t.title,
+                    'sublabel': (t.customer.full_name if t.customer_id else '') + (
+                        ' · ' + t.assigned_to.full_name if t.assigned_to_id else ''
+                    ),
                     'path': '/tasks',
+                    'meta': {
+                        'priority': t.priority,
+                        'due_at': t.due_at.isoformat() if t.due_at else None,
+                    },
                 })
 
-        return Response({'results': results, 'query': q})
+        return Response({'results': results[: limit * 2], 'query': q})

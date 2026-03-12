@@ -52,11 +52,20 @@ const TRIGGERS = [
   { value: 'customer.created', label: 'Клиент создан', icon: UserPlus, color: '#10B981' },
   { value: 'deal.created', label: 'Сделка создана', icon: TrendingUp, color: '#3B82F6' },
   { value: 'deal.stage_changed', label: 'Сделка сменила этап', icon: ArrowRight, color: '#F59E0B' },
+  { value: 'deal.stalled', label: 'Сделка зависла (5+ дней)', icon: AlertCircle, color: '#EF4444' },
   { value: 'task.created', label: 'Задача создана', icon: CheckSquare, color: '#8B5CF6' },
   { value: 'task.overdue', label: 'Задача просрочена', icon: AlertCircle, color: '#EF4444' },
+  { value: 'customer.follow_up_due', label: 'Follow-up просрочен', icon: Bell, color: '#D97706' },
 ];
 
 const FIELDS_BY_TRIGGER: Record<string, { value: string; label: string; type: 'text' | 'number' | 'select' }[]> = {
+  'deal.stalled': [
+    { value: 'deal.amount', label: 'Сумма сделки', type: 'number' },
+    { value: 'deal.days_silent', label: 'Дней без касания', type: 'number' },
+  ],
+  'customer.follow_up_due': [
+    { value: 'customer.response_state', label: 'Статус ответа', type: 'text' },
+  ],
   'customer.created': [
     { value: 'customer.source', label: 'Источник клиента', type: 'text' },
     { value: 'customer.status', label: 'Статус клиента', type: 'select' },

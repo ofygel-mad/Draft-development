@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Activity
+from .models import Activity, MessageTemplate
 from apps.users.serializers import UserShortSerializer
 
 
@@ -21,3 +21,13 @@ class ActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Activity
         fields = ['id', 'type', 'payload', 'actor', 'customer', 'deal', 'created_at']
+
+
+class MessageTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageTemplate
+        fields = [
+            "id", "channel", "name", "body", "shortcut",
+            "is_active", "use_count", "created_at",
+        ]
+        read_only_fields = ["id", "use_count", "created_at"]

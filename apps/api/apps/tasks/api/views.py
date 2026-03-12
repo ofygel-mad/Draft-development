@@ -42,6 +42,26 @@ class TaskViewSet(viewsets.ModelViewSet):
                 payload={'title': instance.title, 'priority': instance.priority},
             )
 
+        try:
+            from apps.automations.services.event_publisher import publish_event
+            publish_event(
+                organization_id=instance.organization_id,
+                event_type='task.created',
+                entity_type='task',
+                entity_id=instance.id,
+                actor_id=self.request.user.id,
+                payload={
+                    'title': instance.title,
+                    'priority': instance.priority,
+                    'due_at': instance.due_at.isoformat() if instance.due_at else None,
+                    'customer_id': str(instance.customer_id) if instance.customer_id else None,
+                    'deal_id': str(instance.deal_id) if instance.deal_id else None,
+                    'owner_id': str(instance.assigned_to_id) if instance.assigned_to_id else None,
+                },
+            )
+        except Exception:
+            pass
+
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         task = self.get_object()

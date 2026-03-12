@@ -64,6 +64,110 @@ def process_domain_event(self, event_id: str):
 
 @shared_task
 def process_scheduled_automations():
-    """Периодически запускается для time-based automations."""
-    # TODO: implement time-based triggers
-    return None
+    """
+    Запускается каждые 5 минут (celery beat).
+    Генерирует domain events для:
+      - task.overdue            — задачи с истёкшим due_at
+      - deal.stalled            — сделки без активности > 5 дней
+      - customer.follow_up_due  — клиенты с follow_up_due_at < now
+    """
+    from datetime import timedelta
+
+    from django.db.models import Q
+
+    from apps.automations.services.event_publisher import publish_event
+    from apps.organizations.models import Organization
+
+    now = timezone.now()
+    five_days_ago = now - timedelta(days=5)
+    processed = {'overdue_tasks': 0, 'stalled_deals': 0, 'followup_due': 0}
+
+    for org in Organization.objects.filter(is_active=True):
+        from apps.tasks.models import Task
+
+        overdue_tasks = Task.objects.filter(
+            organization=org,
+            status=Task.Status.OPEN,
+            due_at__lt=now,
+        ).select_related('assigned_to', 'customer', 'deal')[:100]
+
+        for task in overdue_tasks:
+            dedupe = f"task.overdue:{task.id}:{now.strftime('%Y-%m-%d-%H')}"
+            publish_event(
+                organization_id=org.id,
+                event_type='task.overdue',
+                entity_type='task',
+                entity_id=task.id,
+                payload={
+                    'title': task.title,
+                    'priority': task.priority,
+                    'due_at': task.due_at.isoformat() if task.due_at else None,
+                    'assigned_to': str(task.assigned_to_id) if task.assigned_to_id else None,
+                    'customer_id': str(task.customer_id) if task.customer_id else None,
+                    'deal_id': str(task.deal_id) if task.deal_id else None,
+                },
+                dedupe_key=dedupe,
+            )
+            processed['overdue_tasks'] += 1
+
+        from apps.deals.models import Deal
+
+        stalled = Deal.objects.filter(
+            organization=org,
+            status=Deal.Status.OPEN,
+            deleted_at__isnull=True,
+        ).filter(
+            Q(last_activity_at__lt=five_days_ago)
+            | Q(last_activity_at__isnull=True, created_at__lt=five_days_ago)
+        ).select_related('customer', 'owner', 'stage')[:100]
+
+        for deal in stalled:
+            days = (now - (deal.last_activity_at or deal.created_at)).days
+            dedupe = f"deal.stalled:{deal.id}:{now.strftime('%Y-%m-%d')}"
+            publish_event(
+                organization_id=org.id,
+                event_type='deal.stalled',
+                entity_type='deal',
+                entity_id=deal.id,
+                payload={
+                    'title': deal.title,
+                    'amount': float(deal.amount or 0),
+                    'currency': deal.currency,
+                    'stage': deal.stage.name if deal.stage_id else '',
+                    'days_silent': days,
+                    'owner_id': str(deal.owner_id) if deal.owner_id else None,
+                    'customer_id': str(deal.customer_id) if deal.customer_id else None,
+                },
+                dedupe_key=dedupe,
+            )
+            processed['stalled_deals'] += 1
+
+        from apps.customers.models import Customer
+
+        followup_due = Customer.objects.filter(
+            organization=org,
+            deleted_at__isnull=True,
+            follow_up_due_at__lt=now,
+            follow_up_due_at__isnull=False,
+        ).select_related('owner')[:100]
+
+        for customer in followup_due:
+            dedupe = f"customer.followup:{customer.id}:{now.strftime('%Y-%m-%d-%H')}"
+            publish_event(
+                organization_id=org.id,
+                event_type='customer.follow_up_due',
+                entity_type='customer',
+                entity_id=customer.id,
+                payload={
+                    'full_name': customer.full_name,
+                    'phone': customer.phone or '',
+                    'follow_up_due_at': customer.follow_up_due_at.isoformat(),
+                    'response_state': customer.response_state or '',
+                    'owner_id': str(customer.owner_id) if customer.owner_id else None,
+                },
+                dedupe_key=dedupe,
+            )
+            processed['followup_due'] += 1
+
+    logger.info('process_scheduled_automations done: %s', processed)
+    return processed
