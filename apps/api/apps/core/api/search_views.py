@@ -1,3 +1,4 @@
+from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -24,15 +25,21 @@ class GlobalSearchView(APIView):
         if 'customers' in types:
             from apps.customers.models import Customer
 
-            qs = Customer.objects.filter(
-                organization=org,
-                deleted_at__isnull=True,
-            ).filter(
-                Q(full_name__icontains=q)
-                | Q(company_name__icontains=q)
-                | Q(phone__icontains=q)
-                | Q(email__icontains=q)
-            ).values('id', 'full_name', 'company_name', 'phone', 'status')[:limit]
+            sq = SearchQuery(q, config='russian')
+            qs = (
+                Customer.objects.filter(
+                    organization=org,
+                    deleted_at__isnull=True,
+                )
+                .filter(
+                    Q(search_vector=sq)
+                    | Q(phone__icontains=q)
+                    | Q(email__icontains=q)
+                )
+                .annotate(rank=SearchRank('search_vector', sq))
+                .order_by('-rank')
+                .values('id', 'full_name', 'company_name', 'phone', 'status')[:limit]
+            )
 
             for c in qs:
                 results.append({

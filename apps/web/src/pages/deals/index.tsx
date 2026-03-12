@@ -186,6 +186,25 @@ export default function DealsPage() {
   const changeStage = useMutation({
     mutationFn: ({ dealId, stageId }:{ dealId:string; stageId:string }) =>
       api.post(`/deals/${dealId}/change_stage/`, { stage_id:stageId }),
+    onMutate: async ({ dealId, stageId }) => {
+      await qc.cancelQueries({ queryKey: ['deals-board'] });
+      const prev = qc.getQueryData<BoardData>(['deals-board']);
+      qc.setQueryData<BoardData>(['deals-board'], (old) => {
+        if (!old) return old;
+        const deal = old.stages.flatMap((s) => s.deals).find((d) => d.id === dealId);
+        if (!deal) return old;
+        return {
+          ...old,
+          stages: old.stages.map((s) => ({
+            ...s,
+            deals: s.id === stageId
+              ? [...s.deals.filter((d) => d.id !== dealId), { ...deal, stage: { id: stageId, name: s.name, color: s.color } }]
+              : s.deals.filter((d) => d.id !== dealId),
+          })),
+        };
+      });
+      return { prev };
+    },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey:['deals-board'] });
 
@@ -205,7 +224,10 @@ export default function DealsPage() {
         });
       }
     },
-    onError: () => toast.error('Ошибка при перемещении'),
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['deals-board'], ctx.prev);
+      toast.error('Ошибка при перемещении');
+    },
   });
 
   const activeDeal = board?.stages.flatMap(s=>s.deals).find(d=>d.id===activeId);

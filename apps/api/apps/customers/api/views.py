@@ -104,6 +104,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
             cache.delete(f'dashboard:{request.user.organization_id}')
             return Response({'affected': affected})
 
+        if act == 'restore':
+            affected = Customer.objects.filter(
+                organization=request.user.organization,
+                id__in=ids,
+                deleted_at__isnull=False,
+            ).update(deleted_at=None)
+            cache.delete(f'dashboard:{request.user.organization_id}')
+            return Response({'affected': affected})
+
         if act == 'assign':
             owner_id = payload.get('owner_id')
             if not owner_id:

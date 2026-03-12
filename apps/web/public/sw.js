@@ -1,5 +1,5 @@
 const CACHE = 'crm-v1';
-const STATIC = ['/', '/manifest.json', '/icons/icon-192.png'];
+const STATIC = ['/', '/offline.html', '/manifest.json', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -18,6 +18,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.url.includes('/api/')) return;
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached)),
+    caches.match(e.request).then((cached) =>
+      cached ||
+      fetch(e.request).catch(() =>
+        caches.match('/offline.html'),
+      ),
+    ),
   );
 });
