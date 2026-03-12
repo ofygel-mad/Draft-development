@@ -12,12 +12,12 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             sql="""
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS
+            CREATE INDEX IF NOT EXISTS
                 deals_org_pipeline_stage
             ON deals (organization_id, pipeline_id, stage_id)
             WHERE deleted_at IS NULL AND status = 'open';
 
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS
+            CREATE INDEX IF NOT EXISTS
                 deals_org_status_closed
             ON deals (organization_id, status, closed_at DESC)
             WHERE deleted_at IS NULL;

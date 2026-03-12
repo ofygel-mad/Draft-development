@@ -31,8 +31,22 @@ class DealSerializer(serializers.ModelSerializer):
     customer = CustomerListSerializer(read_only=True)
     stage = PipelineStageSerializer(read_only=True)
 
+    customer_id = serializers.PrimaryKeyRelatedField(
+        source='customer', queryset=Deal._meta.get_field('customer').remote_field.model.objects.all(), write_only=True, required=False, allow_null=True
+    )
+    pipeline_id = serializers.PrimaryKeyRelatedField(
+        source='pipeline', queryset=Deal._meta.get_field('pipeline').remote_field.model.objects.all(), write_only=True
+    )
+    stage_id = serializers.PrimaryKeyRelatedField(
+        source='stage', queryset=Deal._meta.get_field('stage').remote_field.model.objects.all(), write_only=True
+    )
+
     class Meta:
         model = Deal
         fields = ['id', 'title', 'amount', 'currency', 'status',
                   'owner', 'customer', 'stage', 'pipeline',
+                  'customer_id', 'pipeline_id', 'stage_id',
                   'expected_close_date', 'closed_at', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'pipeline': {'read_only': True},
+        }

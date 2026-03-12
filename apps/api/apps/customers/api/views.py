@@ -4,16 +4,40 @@ from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 
 from apps.activities.models import Activity, Note
 from apps.customers.models import Customer
 from apps.customers.selectors.customer_queries import list_customers
 from apps.customers.serializers import CustomerListSerializer, CustomerSerializer
 from apps.audit.services import log_action
+from apps.core.permissions import user_can
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+
+    ACTION_PERMISSIONS = {
+        'list': 'customers.read',
+        'retrieve': 'customers.read',
+        'activities': 'customers.read',
+        'tasks': 'customers.read',
+        'deals': 'customers.read',
+        'whatsapp': 'customers.read',
+        'create': 'customers.create',
+        'update': 'customers.update',
+        'partial_update': 'customers.update',
+        'bulk': 'customers.update',
+        'notes': 'customers.update',
+        'destroy': 'customers.update',
+    }
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        required_perm = self.ACTION_PERMISSIONS.get(getattr(self, 'action', ''), 'customers.read')
+        if not user_can(request.user, required_perm):
+            raise PermissionDenied('Недостаточно прав')
+
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['full_name', 'company_name', 'phone', 'email']
     ordering_fields = ['created_at', 'full_name', 'status']
