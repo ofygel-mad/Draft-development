@@ -50,6 +50,7 @@ interface DealDetail {
   status: string;
   created_at: string;
   expected_close_date: string | null;
+  next_step?: string;
   customer: {
     id: string;
     full_name: string;
@@ -724,7 +725,41 @@ export default function DealProfilePage() {
                   convert={convert}
                 />
               </div>
-              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            </div>
+
+            <div
+              style={{
+                padding: '12px 16px',
+                background: 'var(--color-amber-subtle)',
+                border: '1px solid var(--color-amber-light)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--color-amber-dark)',
+                  marginBottom: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Следующий шаг
+              </div>
+              {deal.next_step ? (
+                <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
+                  {deal.next_step}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                  Не указан — добавьте следующее действие
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                 <Badge
                   color={
                     deal.status === "won"
@@ -767,7 +802,6 @@ export default function DealProfilePage() {
                   Изменить
                 </Button>
               </div>
-            </div>
 
             <StageBar
               stages={stages}

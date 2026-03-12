@@ -95,17 +95,13 @@ export default function RegisterPage() {
         transition: 'width 0.3s ease',
       }}
     >
-      <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{
-          width: 44, height: 44, background: 'var(--color-amber)',
-          borderRadius: 'var(--radius-md)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 10px', color: 'white',
-          fontWeight: 800, fontSize: 20, fontFamily: 'var(--font-display)',
-        }}>C</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-display)', margin: 0 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-display)', margin: '0 0 4px' }}>
           Создать аккаунт
-        </h1>
+        </h2>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+          Бесплатно. Без карты. Готово за 2 минуты.
+        </p>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 28 }}>

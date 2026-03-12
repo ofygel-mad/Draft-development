@@ -46,7 +46,9 @@ class DealSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'amount', 'currency', 'status',
                   'owner', 'customer', 'stage', 'pipeline',
                   'customer_id', 'pipeline_id', 'stage_id',
-                  'expected_close_date', 'closed_at', 'created_at', 'updated_at']
+                  'expected_close_date', 'close_forecast_at', 'closed_at',
+                  'next_step', 'probability', 'loss_reason', 'last_activity_at',
+                  'created_at', 'updated_at']
         extra_kwargs = {
             'pipeline': {'read_only': True},
         }

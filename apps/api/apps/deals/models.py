@@ -21,6 +21,11 @@ class Deal(BaseModel):
     expected_close_date = models.DateField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    next_step = models.CharField(max_length=500, blank=True)
+    probability = models.PositiveSmallIntegerField(null=True, blank=True, help_text='0-100%')
+    last_activity_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    loss_reason = models.CharField(max_length=300, blank=True)
+    close_forecast_at = models.DateField(null=True, blank=True)
 
     class Meta:
         db_table = 'deals'

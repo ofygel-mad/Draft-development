@@ -54,6 +54,19 @@ class ActivityListView(ListCreateAPIView):
             type=act_type,
             payload={**payload, 'note_id': str(note.id)},
         )
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        if customer_id:
+            from apps.customers.models import Customer
+
+            Customer.objects.filter(pk=customer_id).update(last_contact_at=now)
+        if deal_id:
+            from apps.deals.models import Deal
+
+            Deal.objects.filter(pk=deal_id).update(last_activity_at=now)
+
         return Response(ActivitySerializer(activity).data, status=201)
 
 

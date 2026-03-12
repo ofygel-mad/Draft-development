@@ -105,6 +105,36 @@ class LoginView(APIView):
                 entity_id=user.id, entity_label=user.email, request=request,
             )
 
+        daily = {}
+        if org:
+            try:
+                from apps.tasks.models import Task
+                from apps.deals.models import Deal
+                from django.utils import timezone as tz
+
+                now = tz.now()
+                daily = {
+                    'tasks_today': Task.objects.filter(
+                        organization=org,
+                        assigned_to=user,
+                        status='open',
+                        due_at__date=now.date(),
+                    ).count(),
+                    'overdue_tasks': Task.objects.filter(
+                        organization=org,
+                        assigned_to=user,
+                        status='open',
+                        due_at__lt=now,
+                    ).count(),
+                    'open_deals': Deal.objects.filter(
+                        organization=org,
+                        status='open',
+                        deleted_at__isnull=True,
+                    ).count(),
+                }
+            except Exception:
+                pass
+
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
@@ -113,6 +143,7 @@ class LoginView(APIView):
             'capabilities': caps,
             'role': role,
             'onboarding_completed': org.onboarding_completed if org else False,
+            'daily_summary': daily,
         })
 
 

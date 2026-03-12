@@ -24,6 +24,20 @@ interface DashboardData {
     id: string; full_name: string;
     company_name: string; status: string; created_at: string;
   }>;
+  deals_no_activity: number;
+  stalled_deals: Array<{
+    id: string; title: string; amount: number; currency: string;
+    stage: string; customer_name: string; customer_id: string;
+    days_silent: number | null;
+  }>;
+  silent_customers: Array<{
+    id: string; full_name: string; company_name: string;
+    phone: string; days_silent: number | null;
+  }>;
+  today_tasks: Array<{
+    id: string; title: string; priority: string;
+    due_at: string | null; customer: { id: string; full_name: string } | null;
+  }>;
 }
 
 const SC: Record<string, { bg: string; color: string }> = {
@@ -79,6 +93,97 @@ function StatCard({ label, value, delta, icon, accent, fmt = 'n', loading }: {
       }
       <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{label}</div>
     </motion.div>
+  );
+}
+
+
+function WatchlistBlock({ data, navigate }: {
+  data: DashboardData;
+  navigate: ReturnType<typeof import('react-router-dom').useNavigate>;
+}) {
+  const stalled = data.stalled_deals ?? [];
+  const silent = data.silent_customers ?? [];
+  const todayTasks = data.today_tasks ?? [];
+  if (stalled.length === 0 && silent.length === 0 && todayTasks.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      {stalled.length > 0 && (
+        <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid #FCA5A5', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 14 }}>⚠️</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Сделки без движения</span>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{stalled.length}</span>
+          </div>
+          {stalled.map((d) => (
+            <div key={d.id} onClick={() => navigate(`/deals/${d.id}`)} style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', transition: 'background 0.1s' }} onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-muted)')} onMouseLeave={(e) => (e.currentTarget.style.background = '')}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{d.title}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{d.customer_name} · {d.stage}</span>
+                {d.days_silent != null && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: d.days_silent >= 10 ? '#EF4444' : '#D97706', background: d.days_silent >= 10 ? '#FEE2E2' : '#FEF3C7', padding: '1px 7px', borderRadius: 'var(--radius-full)' }}>
+                    {d.days_silent}д без касания
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {silent.length > 0 && (
+        <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid #FDE68A', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 14 }}>🔕</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Молчат клиенты</span>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{silent.length}</span>
+          </div>
+          {silent.map((c) => (
+            <div key={c.id} onClick={() => navigate(`/customers/${c.id}`)} style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', transition: 'background 0.1s' }} onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-muted)')} onMouseLeave={(e) => (e.currentTarget.style.background = '')}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{c.full_name}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.company_name || c.phone}</span>
+                {c.days_silent != null && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#D97706', background: '#FEF3C7', padding: '1px 7px', borderRadius: 'var(--radius-full)' }}>
+                    {c.days_silent}д тишины
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {todayTasks.length > 0 && (
+        <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+          <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 14 }}>📋</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>На сегодня</span>
+            </div>
+            <button onClick={() => navigate('/tasks')} style={{ fontSize: 11, color: 'var(--color-amber)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }}>
+              Все →
+            </button>
+          </div>
+          {todayTasks.map((t) => {
+            const pc: Record<string, string> = { high: '#EF4444', medium: '#D97706', low: '#9CA3AF' };
+            return (
+              <div key={t.id} onClick={() => navigate('/tasks')} style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: pc[t.priority] ?? '#9CA3AF' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                  {t.customer && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{t.customer.full_name}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -267,6 +372,10 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {!isLoading && data && (
+        <WatchlistBlock data={data} navigate={navigate} />
+      )}
     </div>
   );
 }

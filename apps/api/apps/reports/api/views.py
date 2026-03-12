@@ -48,6 +48,42 @@ class DashboardSummaryView(APIView):
         ).values_list('deal_id', flat=True).distinct().count()
         deals_no_activity = max(len(active_deal_ids) - deals_with_recent, 0)
 
+        five_days_ago = now - timedelta(days=5)
+        stalled_deals = list(
+            Deal.objects.filter(
+                organization=org,
+                status='open',
+                deleted_at__isnull=True,
+            ).filter(
+                models.Q(last_activity_at__lt=five_days_ago)
+                | models.Q(last_activity_at__isnull=True, created_at__lt=five_days_ago)
+            ).select_related('customer', 'stage')
+            .order_by('last_activity_at')[:5]
+            .values(
+                'id',
+                'title',
+                'amount',
+                'currency',
+                'last_activity_at',
+                'stage__name',
+                'customer__full_name',
+                'customer__id',
+            )
+        )
+
+        seven_days_ago = now - timedelta(days=7)
+        silent_customers = list(
+            org.customers.filter(
+                deleted_at__isnull=True,
+                deals__status='open',
+            ).filter(
+                models.Q(last_contact_at__lt=seven_days_ago)
+                | models.Q(last_contact_at__isnull=True, created_at__lt=seven_days_ago)
+            ).distinct()
+            .order_by('last_contact_at')[:5]
+            .values('id', 'full_name', 'company_name', 'last_contact_at', 'phone')
+        )
+
         today_tasks_qs = Task.objects.filter(
             organization=org,
             assigned_to=request.user,
@@ -83,6 +119,29 @@ class DashboardSummaryView(APIView):
             'tasks_today':       tasks_today,
             'overdue_tasks':     overdue_tasks,
             'deals_no_activity': deals_no_activity,
+            'stalled_deals': [
+                {
+                    'id': str(d['id']),
+                    'title': d['title'],
+                    'amount': float(d['amount'] or 0),
+                    'currency': d['currency'],
+                    'stage': d['stage__name'],
+                    'customer_name': d['customer__full_name'] or '',
+                    'customer_id': str(d['customer__id'] or ''),
+                    'days_silent': (now - d['last_activity_at']).days if d['last_activity_at'] else None,
+                }
+                for d in stalled_deals
+            ],
+            'silent_customers': [
+                {
+                    'id': str(c['id']),
+                    'full_name': c['full_name'],
+                    'company_name': c['company_name'] or '',
+                    'phone': c['phone'] or '',
+                    'days_silent': (now - c['last_contact_at']).days if c['last_contact_at'] else None,
+                }
+                for c in silent_customers
+            ],
             'today_tasks':       today_tasks_list,
             'recent_customers':  list(Customer.objects.filter(organization=org, deleted_at__isnull=True).order_by('-created_at').values('id', 'full_name', 'company_name', 'status', 'created_at')[:5]),
             'deals_by_stage':    [{'stage': d['stage__name'] or 'Без этапа', 'count': d['count'], 'amount': float(d['amount'] or 0)} for d in deals_by_stage],

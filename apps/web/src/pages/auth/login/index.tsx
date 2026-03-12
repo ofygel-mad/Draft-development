@@ -1,22 +1,12 @@
 import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../../shared/api/client';
 import { useAuthStore } from '../../../shared/stores/auth';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 interface LoginForm { email: string; password: string; }
-
-const inputStyle = (error?: boolean): React.CSSProperties => ({
-  width: '100%', height: 40, padding: '0 12px',
-  border: `1px solid ${error ? '#EF4444' : 'var(--color-border)'}`,
-  borderRadius: 'var(--radius-md)', fontSize: 13,
-  fontFamily: 'var(--font-body)', outline: 'none',
-  background: 'var(--color-bg-elevated)', boxSizing: 'border-box',
-  transition: 'border-color 0.15s',
-});
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -30,47 +20,28 @@ export default function LoginPage() {
         email: data.email.trim().toLowerCase(),
         password: data.password,
       });
-      setAuth(
-        res.user, res.org,
-        res.access, res.refresh,
-        res.capabilities ?? [],
-        res.role ?? 'viewer',
-      );
-      if (!res.onboarding_completed) {
-        navigate('/onboarding', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      setAuth(res.user, res.org, res.access, res.refresh, res.capabilities ?? [], res.role ?? 'viewer');
+      navigate(res.onboarding_completed ? '/' : '/onboarding', { replace: true });
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail ?? 'Ошибка входа');
+      const msg = e?.response?.data?.detail;
+      if (msg?.includes('деактивирован')) {
+        toast.error('Аккаунт деактивирован. Обратитесь к администратору.');
+      } else if (e?.response?.status === 429) {
+        toast.error('Слишком много попыток. Подождите минуту.');
+      } else {
+        toast.error('Неверный email или пароль');
+      }
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      style={{
-        width: 380, padding: '40px 36px',
-        background: 'var(--color-bg-elevated)',
-        borderRadius: 'var(--radius-xl)',
-        border: '1px solid var(--color-border)',
-        boxShadow: 'var(--shadow-lg)',
-      }}
-    >
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <div style={{
-          width: 44, height: 44, background: 'var(--color-amber)',
-          borderRadius: 'var(--radius-md)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 12px', color: 'white',
-          fontWeight: 800, fontSize: 20, fontFamily: 'var(--font-display)',
-        }}>C</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', margin: 0 }}>
-          Войти в CRM
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 6 }}>
-          Введите данные вашего аккаунта
+    <div>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', margin: '0 0 6px' }}>
+          Добро пожаловать
+        </h2>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+          Войдите, чтобы продолжить работу
         </p>
       </div>
 
@@ -84,7 +55,13 @@ export default function LoginPage() {
             type="email"
             placeholder="you@company.kz"
             autoComplete="email"
-            style={inputStyle(!!errors.email)}
+            autoFocus
+            className="crm-input"
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              borderColor: errors.email ? 'var(--color-danger)' : undefined,
+            }}
           />
         </div>
         <div>
@@ -97,44 +74,66 @@ export default function LoginPage() {
               type={showPwd ? 'text' : 'password'}
               placeholder="••••••••"
               autoComplete="current-password"
-              style={{ ...inputStyle(!!errors.password), paddingRight: 40 }}
+              className="crm-input"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                paddingRight: 40,
+                borderColor: errors.password ? 'var(--color-danger)' : undefined,
+              }}
             />
             <button
               type="button"
               onClick={() => setShowPwd(!showPwd)}
               style={{
-                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--color-text-muted)', display: 'flex', padding: 2,
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                display: 'flex',
+                padding: 2,
               }}
             >
               {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
         </div>
-        <motion.button
-          whileTap={{ scale: 0.98 }}
+
+        <button
           type="submit"
           disabled={isSubmitting}
           style={{
-            height: 42, background: 'var(--color-amber)', border: 'none',
-            borderRadius: 'var(--radius-md)', color: 'white',
-            fontSize: 14, fontWeight: 600,
+            height: 44,
+            background: isSubmitting ? 'var(--color-amber-dark)' : 'var(--color-amber)',
+            border: 'none',
+            borderRadius: 'var(--radius-md)',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
             cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font-body)', marginTop: 4,
-            opacity: isSubmitting ? 0.75 : 1, transition: 'opacity 0.15s',
+            fontFamily: 'var(--font-body)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'background 0.15s',
+            boxShadow: 'var(--shadow-amber)',
           }}
         >
-          {isSubmitting ? 'Входим...' : 'Войти'}
-        </motion.button>
+          {isSubmitting ? <><Loader2 size={15} style={{ animation: 'spin 0.8s linear infinite' }} /> Входим...</> : 'Войти'}
+        </button>
       </form>
 
-      <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 20 }}>
+      <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 24 }}>
         Нет аккаунта?{' '}
         <Link to="/auth/register" style={{ color: 'var(--color-amber)', fontWeight: 500, textDecoration: 'none' }}>
           Зарегистрировать компанию
         </Link>
       </p>
-    </motion.div>
+    </div>
   );
 }

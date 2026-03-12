@@ -62,6 +62,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         instance = serializer.save(
             organization=self.request.user.organization,
             owner=self.request.user,
+            last_contact_at=timezone.now(),
         )
 
         from apps.automations.services.event_publisher import publish_event

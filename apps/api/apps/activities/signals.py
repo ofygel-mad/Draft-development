@@ -1,5 +1,34 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
+
+
+@receiver(post_save, sender='activities.Activity')
+def update_contact_timestamps(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    now = timezone.now()
+    contact_types = (
+        'note',
+        'call',
+        'message',
+        'email_sent',
+        'email_in',
+        'whatsapp',
+        'customer_created',
+    )
+    if instance.type not in contact_types:
+        return
+
+    if instance.customer_id:
+        from apps.customers.models import Customer
+
+        Customer.objects.filter(pk=instance.customer_id).update(last_contact_at=now)
+    if instance.deal_id:
+        from apps.deals.models import Deal
+
+        Deal.objects.filter(pk=instance.deal_id).update(last_activity_at=now)
 
 
 @receiver(post_save, sender='customers.Customer')
@@ -34,11 +63,8 @@ def on_deal_created(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender='tasks.Task')
-def on_task_done(sender, instance, created, update_fields=None, **kwargs):
+def on_task_status_change(sender, instance, created, **kwargs):
     if created or instance.status != 'done':
-        return
-
-    if update_fields is not None and 'status' not in update_fields:
         return
 
     from apps.activities.models import Activity

@@ -236,7 +236,8 @@ class DealViewSet(viewsets.ModelViewSet):
             else:
                 deal.status = Deal.Status.OPEN
                 deal.closed_at = None
-            deal.save()
+            deal.last_activity_at = timezone.now()
+            deal.save(update_fields=['stage', 'status', 'closed_at', 'last_activity_at'])
 
             publish_event(
                 organization_id=deal.organization_id,

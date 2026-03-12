@@ -21,6 +21,10 @@ class Customer(BaseModel):
     tags = models.JSONField(default=list, blank=True)
     notes = models.TextField(blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    last_contact_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    next_action_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    next_action_note = models.CharField(max_length=500, blank=True)
+    stalled_reason = models.CharField(max_length=200, blank=True)
 
     class Meta:
         db_table = 'customers'
