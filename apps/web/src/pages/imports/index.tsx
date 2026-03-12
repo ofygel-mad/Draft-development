@@ -30,14 +30,16 @@ interface ImportJob {
 const STEPS = ['Загрузка', 'Маппинг', 'Импорт'];
 
 const STATUS_LABELS: Record<string, string> = {
-  uploaded: 'Загружен', mapping: 'Маппинг', processing: 'Обработка',
+  uploaded: 'Загружен', analyzing: 'Анализ', mapping_required: 'Требуется маппинг', mapping_confirmed: 'Маппинг подтверждён', processing: 'Обработка',
   completed: 'Завершён', failed: 'Ошибка', pending: 'Ожидание',
 };
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   completed: { bg: '#D1FAE5', color: '#065F46' },
   failed: { bg: '#FEE2E2', color: '#991B1B' },
   processing: { bg: '#DBEAFE', color: '#1D4ED8' },
-  mapping: { bg: '#FEF3C7', color: '#92400E' },
+  analyzing: { bg: '#DBEAFE', color: '#1D4ED8' },
+  mapping_required: { bg: '#FEF3C7', color: '#92400E' },
+  mapping_confirmed: { bg: '#F3E8FF', color: '#6B21A8' },
   uploaded: { bg: '#F3F4F6', color: '#6B7280' },
   pending: { bg: '#F3F4F6', color: '#6B7280' },
 };
@@ -54,7 +56,9 @@ export default function ImportsPage() {
     queryKey: ['import-jobs'],
     queryFn: () => api.get('/imports/'),
     refetchInterval: (query) => {
-      const hasProcessing = (query.state.data as { results: ImportJob[] } | undefined)?.results.some(j => j.status === 'processing');
+      const hasProcessing = (query.state.data as { results: ImportJob[] } | undefined)?.results.some(
+        j => ['processing', 'analyzing', 'mapping_required', 'mapping_confirmed'].includes(j.status),
+      );
       return hasProcessing ? 3000 : false;
     },
   });
@@ -84,7 +88,7 @@ export default function ImportsPage() {
   });
 
   const confirmMapping = useMutation({
-    mutationFn: () => api.post(`/imports/${activeJobId}/mapping/`, { mapping }),
+    mutationFn: () => api.post(`/imports/${activeJobId}/mapping/`, { column_mapping: mapping }),
     onSuccess: () => { setWizardStep(2); startImport.mutate(); },
   });
 
