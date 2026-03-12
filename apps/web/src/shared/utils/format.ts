@@ -1,9 +1,17 @@
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  KZT: '₸', RUB: '₽', USD: '$', EUR: '€', CNY: '¥',
+};
+
+const CURRENCY_LOCALES: Record<string, string> = {
+  KZT: 'kk-KZ', RUB: 'ru-RU', USD: 'en-US', EUR: 'de-DE', CNY: 'zh-CN',
+};
+
 export function formatMoney(
   amount: number,
-  currency: string = 'KZT',
-  locale: string = 'ru-KZ',
+  currency = 'KZT',
   compact = false,
 ): string {
+  const locale = CURRENCY_LOCALES[currency] ?? 'kk-KZ';
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
@@ -22,11 +30,5 @@ export function formatNumber(
 }
 
 export function currencySymbol(currency: string): string {
-  const symbols: Record<string, string> = {
-    KZT: '₸',
-    RUB: '₽',
-    USD: '$',
-    EUR: '€',
-  };
-  return symbols[currency] ?? currency;
+  return CURRENCY_SYMBOLS[currency] ?? currency;
 }

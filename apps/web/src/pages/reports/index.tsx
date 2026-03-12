@@ -30,7 +30,7 @@ import { PageHeader } from "../../shared/ui/PageHeader";
 import { Skeleton } from "../../shared/ui/Skeleton";
 import { Button } from "../../shared/ui/Button";
 import { useAuthStore } from "../../shared/stores/auth";
-import { currencySymbol, formatNumber } from "../../shared/utils/format";
+import { formatMoney } from "../../shared/utils/format";
 import { useIsMobile } from "../../shared/hooks/useIsMobile";
 import { format, subDays, startOfMonth, startOfQuarter, startOfYear } from "date-fns";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
@@ -232,7 +232,7 @@ function Metric({
 }) {
   const display =
     fmt === "currency"
-      ? `${formatNumber(value)} ${currencySymbol(useAuthStore.getState().org?.currency ?? "KZT")}`
+      ? formatMoney(value, useAuthStore.getState().org?.currency ?? "KZT")
       : value.toLocaleString("ru-KZ");
   return (
     <motion.div
@@ -303,7 +303,7 @@ export default function ReportsPage() {
   useDocumentTitle("Отчёты");
   const token = useAuthStore((s) => s.token);
   const org = useAuthStore((s) => s.org);
-  const orgSym = currencySymbol(org?.currency ?? "KZT");
+  const orgCurrency = org?.currency ?? 'KZT';
   const isMobile = useIsMobile();
   const [period, setPeriod] = useState<Period>("30d");
   const dates = periodToDates(period);
@@ -580,7 +580,7 @@ export default function ReportsPage() {
                   tick={{ fontSize: 11, fill: "var(--color-text-muted)" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => `${new Intl.NumberFormat("ru-KZ", { notation: "compact" }).format(v)} ${orgSym}` }
+                  tickFormatter={(v) => formatMoney(v, orgCurrency, true)}
                 />
                 <Tooltip content={<Tip />} />
                 <Line
@@ -675,11 +675,7 @@ export default function ReportsPage() {
                       fontFamily: "var(--font-display)",
                     }}
                   >
-                    {new Intl.NumberFormat("ru-KZ", {
-                      notation: "compact",
-                      maximumFractionDigits: 1,
-                    }).format(m.revenue)}{" "}
-                    {orgSym}
+                    {formatMoney(m.revenue, orgCurrency, true)}
                   </div>
                 </motion.div>
               ))}
@@ -865,11 +861,7 @@ export default function ReportsPage() {
                           fontFamily: "var(--font-display)",
                         }}
                       >
-                        {new Intl.NumberFormat("ru-KZ", {
-                          notation: "compact",
-                          maximumFractionDigits: 1,
-                        }).format(m.revenue)}{" "}
-                        {orgSym}
+                        {formatMoney(m.revenue, orgCurrency, true)}
                       </td>
                       <td
                         style={{
