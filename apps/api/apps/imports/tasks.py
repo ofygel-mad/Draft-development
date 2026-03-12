@@ -3,6 +3,11 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
+from apps.imports.services.state_machine import (
+    InvalidImportTransitionError,
+    transition_job,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,21 +26,31 @@ def process_import_job(self, import_job_id: str):
         processor = ImportProcessor(job)
         result = processor.run()
 
-        job.status = ImportJob.Status.COMPLETED
         job.result_json = result
         job.finished_at = timezone.now()
-        job.save(update_fields=['status', 'result_json', 'finished_at'])
+        transition_job(
+            job=job,
+            next_status=ImportJob.Status.COMPLETED,
+            update_fields=['result_json', 'finished_at'],
+        )
 
     except ImportJob.DoesNotExist:
         logger.error('ImportJob %s not found', import_job_id)
     except Exception as exc:
         logger.exception('ImportJob %s failed: %s', import_job_id, exc)
-        ImportJob.objects.filter(id=import_job_id).update(
-            status=ImportJob.Status.FAILED,
-            error_message=str(exc),
-            result_json={'error': str(exc)},
-            finished_at=timezone.now(),
-        )
+        job = ImportJob.objects.filter(id=import_job_id).first()
+        if job:
+            job.error_message = str(exc)
+            job.result_json = {'error': str(exc)}
+            job.finished_at = timezone.now()
+            try:
+                transition_job(
+                    job=job,
+                    next_status=ImportJob.Status.FAILED,
+                    update_fields=['error_message', 'result_json', 'finished_at'],
+                )
+            except InvalidImportTransitionError:
+                logger.warning('Cannot mark job %s as failed from status %s', import_job_id, job.status)
         raise self.retry(exc=exc)
 
 
@@ -48,10 +63,23 @@ def analyze_import_file(import_job_id: str):
         job = ImportJob.objects.get(id=import_job_id)
         preview_data = analyze_file(job.file_path, job.import_type)
 
-        job.status = ImportJob.Status.MAPPING_REQUIRED
         job.preview_json = preview_data
-        job.save(update_fields=['status', 'preview_json'])
+        transition_job(
+            job=job,
+            next_status=ImportJob.Status.MAPPING_REQUIRED,
+            update_fields=['preview_json'],
+        )
 
     except Exception as exc:
         logger.exception('Failed to analyze import file for job %s: %s', import_job_id, exc)
-        ImportJob.objects.filter(id=import_job_id).update(status=ImportJob.Status.FAILED, error_message=str(exc))
+        job = ImportJob.objects.filter(id=import_job_id).first()
+        if job:
+            job.error_message = str(exc)
+            try:
+                transition_job(
+                    job=job,
+                    next_status=ImportJob.Status.FAILED,
+                    update_fields=['error_message'],
+                )
+            except InvalidImportTransitionError:
+                logger.warning('Cannot mark analyzed job %s as failed from status %s', import_job_id, job.status)

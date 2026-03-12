@@ -11,23 +11,17 @@ from rest_framework.response import Response
 from apps.core.permissions import HasRolePerm
 from apps.imports.models import ImportJob
 from apps.imports.serializers import ImportJobSerializer
+from apps.imports.services.state_machine import (
+    InvalidImportTransitionError,
+    normalize_import_type,
+    transition_job,
+)
 
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.path.join(settings.MEDIA_ROOT, 'imports')
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'.csv', '.xlsx', '.xls'}
-
-IMPORT_TYPE_ALIASES = {
-    'customers': 'customer',
-    'customer': 'customer',
-    'deals': 'deal',
-    'deal': 'deal',
-    'tasks': 'task',
-    'task': 'task',
-    'spreadsheets': 'spreadsheet',
-    'spreadsheet': 'spreadsheet',
-}
 
 TERMINAL_STATUSES = {
     ImportJob.Status.COMPLETED,
@@ -74,13 +68,6 @@ class ImportJobViewSet(viewsets.ModelViewSet):
     def upload(self, request):
         return self._handle_upload(request)
 
-    def _normalize_import_type(self, raw_value: str) -> str:
-        normalized = IMPORT_TYPE_ALIASES.get((raw_value or 'customer').strip().lower())
-        if not normalized:
-            allowed = ', '.join(sorted(set(IMPORT_TYPE_ALIASES.values())))
-            raise ValueError(f'Неподдерживаемый import_type. Разрешено: {allowed}')
-        return normalized
-
     def _handle_upload(self, request):
         file = request.FILES.get('file')
         if not file:
@@ -96,7 +83,7 @@ class ImportJobViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            import_type = self._normalize_import_type(request.data.get('import_type', 'customer'))
+            import_type = normalize_import_type(request.data.get('import_type', 'customer'))
         except ValueError as exc:
             return Response({'error': str(exc)}, status=400)
 
@@ -114,8 +101,7 @@ class ImportJobViewSet(viewsets.ModelViewSet):
         from apps.imports.tasks import analyze_import_file
         analyze_import_file.delay(str(job.id))
 
-        job.status = ImportJob.Status.ANALYZING
-        job.save(update_fields=['status'])
+        transition_job(job=job, next_status=ImportJob.Status.ANALYZING)
 
         return Response(ImportJobSerializer(job).data, status=201)
 
@@ -140,8 +126,14 @@ class ImportJobViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Укажите column_mapping или mapping'}, status=400)
 
         job.column_mapping = mapping
-        job.status = ImportJob.Status.MAPPING_CONFIRMED
-        job.save(update_fields=['column_mapping', 'status'])
+        try:
+            transition_job(
+                job=job,
+                next_status=ImportJob.Status.MAPPING_CONFIRMED,
+                update_fields=['column_mapping'],
+            )
+        except InvalidImportTransitionError as exc:
+            return Response({'error': str(exc)}, status=400)
 
         return Response(ImportJobSerializer(job).data)
 
@@ -157,9 +149,15 @@ class ImportJobViewSet(viewsets.ModelViewSet):
                 status=400,
             )
 
-        job.status = ImportJob.Status.PROCESSING
         job.started_at = timezone.now()
-        job.save(update_fields=['status', 'started_at'])
+        try:
+            transition_job(
+                job=job,
+                next_status=ImportJob.Status.PROCESSING,
+                update_fields=['started_at'],
+            )
+        except InvalidImportTransitionError as exc:
+            return Response({'error': str(exc)}, status=400)
 
         from apps.imports.tasks import process_import_job
         process_import_job.delay(str(job.id))
@@ -197,7 +195,13 @@ class ImportJobViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         job = self.get_object()
         if job.status not in TERMINAL_STATUSES:
-            job.status = ImportJob.Status.CANCELLED
             job.finished_at = timezone.now()
-            job.save(update_fields=['status', 'finished_at'])
+            try:
+                transition_job(
+                    job=job,
+                    next_status=ImportJob.Status.CANCELLED,
+                    update_fields=['finished_at'],
+                )
+            except InvalidImportTransitionError:
+                pass
         return Response(status=status.HTTP_204_NO_CONTENT)

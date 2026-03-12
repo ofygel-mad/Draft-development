@@ -2,6 +2,7 @@ import io
 import pytest
 
 from apps.imports.models import ImportJob
+from apps.imports.services.state_machine import InvalidImportTransitionError, normalize_import_type, transition_job
 
 
 @pytest.mark.django_db
@@ -74,3 +75,19 @@ class TestImportAPI:
         assert 'counts' in r.data
         assert 'percent' in r.data
         assert r.data['can_confirm_mapping'] is True
+
+    def test_import_type_aliases_are_normalized(self):
+        assert normalize_import_type('customers') == ImportJob.ImportType.CUSTOMER
+        assert normalize_import_type('deal') == ImportJob.ImportType.DEAL
+
+    def test_forbidden_transition_is_rejected(self, user):
+        job = ImportJob.objects.create(
+            organization=user.organization,
+            created_by=user,
+            import_type=ImportJob.ImportType.CUSTOMER,
+            status=ImportJob.Status.COMPLETED,
+            file_name='x.csv',
+        )
+
+        with pytest.raises(InvalidImportTransitionError):
+            transition_job(job=job, next_status=ImportJob.Status.PROCESSING)
