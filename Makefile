@@ -28,10 +28,10 @@ test:
 	docker-compose exec api python manage.py test --verbosity=2
 
 lint-frontend:
-	cd apps/web && npm run lint
+	pnpm --dir apps/web run lint
 
 build-frontend:
-	cd apps/web && npm run build
+	pnpm --dir apps/web run build
 
 import-fixtures:
 	docker-compose exec api python manage.py loaddata fixtures/demo.json

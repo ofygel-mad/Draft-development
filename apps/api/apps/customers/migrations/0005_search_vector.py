@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 )
               ) STORED;
 
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS
+            CREATE INDEX IF NOT EXISTS
               customers_search_vector_gin
             ON customers
             USING gin (search_vector)

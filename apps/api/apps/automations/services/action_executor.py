@@ -11,11 +11,35 @@
 """
 from __future__ import annotations
 import logging
+import ipaddress
+import socket
+from urllib.parse import urlparse
 from django.utils import timezone
 
 from apps.automations.models import AutomationExecution, AutomationAction, AutomationExecutionAction
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_webhook_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {'http', 'https'}:
+        raise ValueError('webhook: only http/https urls are allowed')
+    if not parsed.hostname:
+        raise ValueError('webhook: hostname is required')
+
+    try:
+        addr_info = socket.getaddrinfo(parsed.hostname, parsed.port or 443, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as exc:
+        raise ValueError(f'webhook: cannot resolve host: {exc}')
+
+    for info in addr_info:
+        raw_ip = info[4][0]
+        ip = ipaddress.ip_address(raw_ip)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise ValueError('webhook: internal or non-routable hosts are not allowed')
+
+    return url
 
 
 def execute_actions(
@@ -303,13 +327,12 @@ def _action_change_deal_stage(cfg: dict, execution: AutomationExecution, event, 
 
 
 def _action_webhook(cfg: dict, execution: AutomationExecution, event, context: dict) -> dict:
-    import json
-    import urllib.request
-    import urllib.error
+    import requests
 
     url = cfg.get('url')
     if not url:
         raise ValueError('webhook: url required')
+    url = _validate_webhook_url(url)
 
     headers = cfg.get('headers', {})
     headers.setdefault('Content-Type', 'application/json')
@@ -325,14 +348,10 @@ def _action_webhook(cfg: dict, execution: AutomationExecution, event, context: d
         'context': {k: v for k, v in context.items() if k != 'organization'},
     }
 
-    data = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            status = resp.status
-    except urllib.error.HTTPError as e:
-        status = e.code
-    except urllib.error.URLError as e:
-        raise ValueError(f'Webhook failed: {e.reason}')
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        status = response.status_code
+    except requests.RequestException as exc:
+        raise ValueError(f'Webhook failed: {exc}')
 
     return {'url': url, 'status_code': status}

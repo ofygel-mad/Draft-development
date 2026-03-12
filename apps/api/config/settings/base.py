@@ -6,6 +6,7 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
 from celery.schedules import crontab
+from config.logging import LOGGING_CONFIG as APP_LOGGING_CONFIG
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
@@ -230,8 +231,7 @@ if SENTRY_DSN:
     )
 
 
-from config.logging import LOGGING_CONFIG
-LOGGING = LOGGING_CONFIG
+LOGGING = APP_LOGGING_CONFIG
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 

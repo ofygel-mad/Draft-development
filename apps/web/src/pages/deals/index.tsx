@@ -145,10 +145,12 @@ export default function DealsPage() {
   const [createDrawer, setCreateDrawer] = useState(false);
   const isMobile = useIsMobile();
 
-  useSSE((event) => {
-    if (event === 'deal_update') {
-      qc.invalidateQueries({ queryKey: ['deals-board'] });
-    }
+  useSSE({
+    onNotification: (event: Record<string, unknown>) => {
+      if (event.type === 'deal_update') {
+        qc.invalidateQueries({ queryKey: ['deals-board'] });
+      }
+    },
   });
 
   useEffect(() => {

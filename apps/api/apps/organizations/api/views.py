@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework import serializers, viewsets, status
-from apps.organizations.models import Branch, CustomField, CustomFieldValue, Organization
+from apps.organizations.models import Branch, CustomField, CustomFieldValue
 from apps.organizations.serializers import OrganizationSerializer
 from apps.core.permissions import IsOrgAdmin, get_user_role
 
