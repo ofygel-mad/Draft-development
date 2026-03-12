@@ -32,10 +32,7 @@ TERMINAL_STATUSES = {
 def _save_upload_file(request, file):
     safe_name = f"{request.user.id}_{file.name.replace(' ', '_')}"
     storage_key = f'imports/{safe_name}'
-    with default_storage.open(storage_key, 'wb') as dest:
-        for chunk in file.chunks():
-            dest.write(chunk)
-    return storage_key
+    return default_storage.save(storage_key, file)
 
 
 class ImportJobViewSet(viewsets.ModelViewSet):
