@@ -17,14 +17,15 @@ class IdempotencyKeyMiddleware(MiddlewareMixin):
     def process_request(self, request):
         if request.method not in WRITE_METHODS or not request.path.startswith(PROTECTED_PREFIXES):
             return None
-        if not request.user.is_authenticated:
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
             return None
         key = request.headers.get('Idempotency-Key', '').strip()
         if not key:
             return None
         body = request.body.decode('utf-8') if request.body else ''
         request_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
-        existing = IdempotencyKey.objects.filter(key=key, user=request.user, method=request.method, path=request.path, expires_at__gt=timezone.now()).first()
+        existing = IdempotencyKey.objects.filter(key=key, user=user, method=request.method, path=request.path, expires_at__gt=timezone.now()).first()
         if existing and existing.request_hash != request_hash:
             return JsonResponse({'detail': 'Idempotency-Key reused with different payload.'}, status=409)
         if existing and existing.response_code:
