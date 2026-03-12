@@ -41,6 +41,12 @@ def api_client(user):
 
 
 @pytest.fixture
+def auth_client(api_client):
+    """Backward-compatible alias used by older API tests."""
+    return api_client
+
+
+@pytest.fixture
 def customer(db, org, user):
     from apps.customers.models import Customer
     return Customer.objects.create(
