@@ -1,11 +1,14 @@
 import os
 import logging
-from rest_framework import viewsets
+from django.conf import settings
+from django.utils import timezone
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.conf import settings
+
+from apps.core.permissions import HasRolePerm
 from apps.imports.models import ImportJob
 from apps.imports.serializers import ImportJobSerializer
 
@@ -15,9 +18,25 @@ UPLOAD_DIR = os.path.join(settings.MEDIA_ROOT, 'imports')
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'.csv', '.xlsx', '.xls'}
 
+IMPORT_TYPE_ALIASES = {
+    'customers': 'customer',
+    'customer': 'customer',
+    'deals': 'deal',
+    'deal': 'deal',
+    'tasks': 'task',
+    'task': 'task',
+    'spreadsheets': 'spreadsheet',
+    'spreadsheet': 'spreadsheet',
+}
+
+TERMINAL_STATUSES = {
+    ImportJob.Status.COMPLETED,
+    ImportJob.Status.FAILED,
+    ImportJob.Status.CANCELLED,
+}
+
 
 def _save_upload_file(request, file):
-    """Сохраняет файл на диск, возвращает путь."""
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     safe_name = f"{request.user.id}_{file.name.replace(' ', '_')}"
     file_path = os.path.join(UPLOAD_DIR, safe_name)
@@ -28,11 +47,19 @@ def _save_upload_file(request, file):
 
 
 class ImportJobViewSet(viewsets.ModelViewSet):
-    """
-    ИСПРАВЛЕНО: был ReadOnlyModelViewSet — POST /imports/ возвращал 405.
-    """
-    http_method_names = ['get', 'post', 'head', 'options']
-    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm_map = {
+        'list': 'imports.read',
+        'retrieve': 'imports.read',
+        'create': 'imports.upload',
+        'upload': 'imports.upload',
+        'mapping': 'imports.upload',
+        'confirm_mapping': 'imports.upload',
+        'start': 'imports.upload',
+        'status': 'imports.read',
+        'destroy': 'imports.upload',
+    }
     serializer_class = ImportJobSerializer
 
     def get_queryset(self):
@@ -41,16 +68,18 @@ class ImportJobViewSet(viewsets.ModelViewSet):
         ).order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
-        """
-        POST /api/v1/imports/
-        ИСПРАВЛЕНО: фронт постит на /imports/, а не на /imports/upload/.
-        """
         return self._handle_upload(request)
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload(self, request):
-        """POST /api/v1/imports/upload/ — для обратной совместимости."""
         return self._handle_upload(request)
+
+    def _normalize_import_type(self, raw_value: str) -> str:
+        normalized = IMPORT_TYPE_ALIASES.get((raw_value or 'customer').strip().lower())
+        if not normalized:
+            allowed = ', '.join(sorted(set(IMPORT_TYPE_ALIASES.values())))
+            raise ValueError(f'Неподдерживаемый import_type. Разрешено: {allowed}')
+        return normalized
 
     def _handle_upload(self, request):
         file = request.FILES.get('file')
@@ -66,12 +95,12 @@ class ImportJobViewSet(viewsets.ModelViewSet):
                 status=400,
             )
 
-        file_path = _save_upload_file(request, file)
+        try:
+            import_type = self._normalize_import_type(request.data.get('import_type', 'customer'))
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=400)
 
-        # ИСПРАВЛЕНО: фронт шлёт 'customers' (plural), модель ждёт 'customer' (singular)
-        import_type = request.data.get('import_type', 'customer')
-        if import_type and import_type.endswith('s') and import_type != 'deals':
-            import_type = import_type.rstrip('s')
+        file_path = _save_upload_file(request, file)
 
         job = ImportJob.objects.create(
             organization=request.user.organization,
@@ -79,36 +108,33 @@ class ImportJobViewSet(viewsets.ModelViewSet):
             import_type=import_type,
             file_name=file.name,
             file_path=file_path,
-            status=ImportJob.Status.PENDING,
+            status=ImportJob.Status.UPLOADED,
         )
 
         from apps.imports.tasks import analyze_import_file
         analyze_import_file.delay(str(job.id))
 
+        job.status = ImportJob.Status.ANALYZING
+        job.save(update_fields=['status'])
+
         return Response(ImportJobSerializer(job).data, status=201)
 
     @action(detail=True, methods=['post'], url_path='mapping')
     def mapping(self, request, pk=None):
-        """
-        POST /api/v1/imports/{id}/mapping/
-        ИСПРАВЛЕНО: фронт шлёт на /mapping/, бэк имел только /confirm_mapping/.
-        """
         return self._handle_confirm_mapping(request, pk)
 
     @action(detail=True, methods=['post'])
     def confirm_mapping(self, request, pk=None):
-        """POST /api/v1/imports/{id}/confirm_mapping/ — для обратной совместимости."""
         return self._handle_confirm_mapping(request, pk)
 
     def _handle_confirm_mapping(self, request, pk):
         job = self.get_object()
-        if job.status not in (ImportJob.Status.MAPPING, ImportJob.Status.PENDING, ImportJob.Status.MAPPING_CONFIRMED):
+        if job.status not in (ImportJob.Status.MAPPING_REQUIRED, ImportJob.Status.MAPPING_CONFIRMED):
             return Response(
                 {'error': f'Нельзя подтвердить в статусе {job.status}'},
                 status=400,
             )
 
-        # ИСПРАВЛЕНО: фронт шлёт 'mapping', бэк ожидал 'column_mapping'
         mapping = request.data.get('column_mapping') or request.data.get('mapping')
         if not mapping:
             return Response({'error': 'Укажите column_mapping или mapping'}, status=400)
@@ -117,36 +143,61 @@ class ImportJobViewSet(viewsets.ModelViewSet):
         job.status = ImportJob.Status.MAPPING_CONFIRMED
         job.save(update_fields=['column_mapping', 'status'])
 
+        return Response(ImportJobSerializer(job).data)
+
+    @action(detail=True, methods=['post'])
+    def start(self, request, pk=None):
+        job = self.get_object()
+        if job.status in (ImportJob.Status.PROCESSING, ImportJob.Status.COMPLETED):
+            return Response(ImportJobSerializer(job).data, status=status.HTTP_200_OK)
+
+        if job.status != ImportJob.Status.MAPPING_CONFIRMED:
+            return Response(
+                {'error': 'Сначала подтвердите маппинг колонок'},
+                status=400,
+            )
+
+        job.status = ImportJob.Status.PROCESSING
+        job.started_at = timezone.now()
+        job.save(update_fields=['status', 'started_at'])
+
         from apps.imports.tasks import process_import_job
         process_import_job.delay(str(job.id))
 
         return Response(ImportJobSerializer(job).data)
 
-    @action(detail=True, methods=['post'])
-    def start(self, request, pk=None):
-        """
-        POST /api/v1/imports/{id}/start/
-        ИСПРАВЛЕНО: этого эндпоинта не существовало — фронт получал 404.
-        """
-        job = self.get_object()
-        if job.status == ImportJob.Status.MAPPING_CONFIRMED:
-            from apps.imports.tasks import process_import_job
-            process_import_job.delay(str(job.id))
-        elif job.status in (ImportJob.Status.PENDING, ImportJob.Status.MAPPING):
-            return Response(
-                {'error': 'Сначала подтвердите маппинг колонок'},
-                status=400,
-            )
-        return Response(ImportJobSerializer(job).data)
-
     @action(detail=True, methods=['get'])
     def status(self, request, pk=None):
         job = self.get_object()
+        total = max(job.total_rows or 0, 1)
+        processed = (job.imported_rows or 0) + (job.failed_rows or 0)
+        percent = min(100, int((processed / total) * 100)) if total else 0
         return Response({
             'id': str(job.id),
             'status': job.status,
+            'stage': job.status,
+            'counts': {
+                'total_rows': job.total_rows,
+                'imported_rows': job.imported_rows,
+                'failed_rows': job.failed_rows,
+            },
+            'percent': percent,
+            'warnings': job.warnings_json or [],
+            'row_errors': job.row_errors_json or [],
             'error': job.error_message,
-            'stats': job.stats or {},
+            'started_at': job.started_at,
+            'finished_at': job.finished_at,
+            'can_retry': job.status in (ImportJob.Status.FAILED, ImportJob.Status.CANCELLED),
+            'can_start': job.status == ImportJob.Status.MAPPING_CONFIRMED,
+            'can_confirm_mapping': job.status == ImportJob.Status.MAPPING_REQUIRED,
             'created_at': job.created_at,
             'updated_at': job.updated_at,
         })
+
+    def destroy(self, request, *args, **kwargs):
+        job = self.get_object()
+        if job.status not in TERMINAL_STATUSES:
+            job.status = ImportJob.Status.CANCELLED
+            job.finished_at = timezone.now()
+            job.save(update_fields=['status', 'finished_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)

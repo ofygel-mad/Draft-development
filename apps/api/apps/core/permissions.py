@@ -70,6 +70,11 @@ class HasRolePerm(BasePermission):
     def has_permission(self, request, view):
         perm = getattr(view, 'required_perm', None)
         if not perm:
+            action = getattr(view, 'action', None)
+            perm_map = getattr(view, 'required_perm_map', None) or {}
+            if action:
+                perm = perm_map.get(action)
+        if not perm:
             return request.user and request.user.is_authenticated
         return user_can(request.user, perm)
 
