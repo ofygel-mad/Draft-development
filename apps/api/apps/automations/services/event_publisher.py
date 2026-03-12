@@ -28,17 +28,22 @@ def publish_event(
     try:
         with transaction.atomic():
             try:
-                event = DomainEvent.objects.create(
-                    organization_id=organization_id,
-                    event_type=event_type,
-                    entity_type=entity_type,
-                    entity_id=entity_id,
-                    actor_id=actor_id,
-                    source=source,
-                    payload_json=payload,
-                    occurred_at=timezone.now(),
-                    dedupe_key=dedupe_key,
-                )
+                # Use a nested atomic() to create a savepoint.
+                # If the INSERT races another thread and hits a UniqueViolation,
+                # Django rolls back only the savepoint — the outer transaction
+                # stays clean so the subsequent SELECT can still execute.
+                with transaction.atomic():
+                    event = DomainEvent.objects.create(
+                        organization_id=organization_id,
+                        event_type=event_type,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        actor_id=actor_id,
+                        source=source,
+                        payload_json=payload,
+                        occurred_at=timezone.now(),
+                        dedupe_key=dedupe_key,
+                    )
             except IntegrityError:
                 if not dedupe_key:
                     raise

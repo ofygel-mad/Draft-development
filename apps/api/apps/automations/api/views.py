@@ -115,6 +115,7 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
                 for c_data in g_data.get('conditions', []):
                     AutomationCondition.objects.create(
                         group=group,
+                        rule=rule,
                         field_path=c_data['field_path'],
                         operator=c_data['operator'],
                         value_json=c_data.get('value_json'),
@@ -198,6 +199,7 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
                 for c_data in g_data.get('conditions', []):
                     AutomationCondition.objects.create(
                         group=group,
+                        rule=rule,
                         field_path=c_data['field_path'],
                         operator=c_data['operator'],
                         value_json=c_data.get('value_json'),
