@@ -10,7 +10,14 @@ from django.utils.deprecation import MiddlewareMixin
 from apps.core.models import IdempotencyKey
 
 WRITE_METHODS = {'POST', 'PUT', 'PATCH', 'DELETE'}
-PROTECTED_PREFIXES = ('/api/v1/imports/', '/api/v1/spreadsheets/', '/api/v1/deals/', '/api/v1/customers/', '/api/v1/tasks/')
+PROTECTED_PREFIXES = (
+    '/api/v1/imports/',
+    '/api/v1/spreadsheets/',
+    '/api/v1/deals/',
+    '/api/v1/customers/',
+    '/api/v1/tasks/',
+    '/api/v1/automations/',
+)
 
 
 class IdempotencyKeyMiddleware(MiddlewareMixin):
