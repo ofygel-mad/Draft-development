@@ -67,6 +67,13 @@ export function AppShell() {
     return () => document.removeEventListener('keydown', onKey);
   }, [toggle]);
 
+
+  useEffect(() => {
+    const goImport = () => navigate('/imports');
+    window.addEventListener('crm:go-import', goImport);
+    return () => window.removeEventListener('crm:go-import', goImport);
+  }, [navigate]);
+
   const sidebarW = isMobile ? 0 : sidebarCollapsed ? 64 : 220;
 
   return (

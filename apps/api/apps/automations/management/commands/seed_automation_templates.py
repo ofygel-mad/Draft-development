@@ -111,6 +111,62 @@ TEMPLATES = [
             },
         ],
     },
+    {
+        'code': 'deal_stalled_notify_owner',
+        'name': 'Сделка зависла — уведомить менеджера',
+        'description': 'Если сделка 5+ дней без движения, отправить уведомление владельцу.',
+        'trigger_type': 'deal.stalled',
+        'default_conditions': [],
+        'default_actions': [
+            {
+                'action_type': 'send_notification',
+                'config_json': {
+                    'title': 'Сделка зависла: {{deal.title}}',
+                    'body': 'Нет активности {{deal.days_silent}} дней. Проверьте сделку и обновите статус.',
+                    'recipient_ids': [],
+                },
+                'position': 0,
+            },
+        ],
+    },
+    {
+        'code': 'deal_stalled_create_task',
+        'name': 'Сделка зависла — создать задачу на касание',
+        'description': 'Если сделка 5+ дней без движения, создать задачу для менеджера.',
+        'trigger_type': 'deal.stalled',
+        'default_conditions': [],
+        'default_actions': [
+            {
+                'action_type': 'create_task',
+                'config_json': {
+                    'title': 'Связаться по сделке: {{deal.title}}',
+                    'due_in_days': 1,
+                    'assign_to': 'owner',
+                    'priority': 'high',
+                },
+                'position': 0,
+            },
+        ],
+    },
+    {
+        'code': 'followup_due_create_task',
+        'name': 'Follow-up просрочен — создать задачу',
+        'description': 'Когда наступает дата follow-up по клиенту, создать задачу.',
+        'trigger_type': 'customer.follow_up_due',
+        'default_conditions': [],
+        'default_actions': [
+            {
+                'action_type': 'create_task',
+                'config_json': {
+                    'title': 'Follow-up: {{customer.full_name}}',
+                    'due_in_days': 0,
+                    'assign_to': 'owner',
+                    'priority': 'high',
+                },
+                'position': 0,
+            },
+        ],
+    }
 ]
 
 

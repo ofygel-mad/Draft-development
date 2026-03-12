@@ -65,15 +65,25 @@ class CustomerViewSet(viewsets.ModelViewSet):
             last_contact_at=timezone.now(),
         )
 
-        from apps.automations.services.event_publisher import publish_event
-        publish_event(
-            organization_id=instance.organization_id,
-            event_type='customer.created',
-            entity_type='customer',
-            entity_id=instance.id,
-            actor_id=self.request.user.id,
-            payload={'status': instance.status, 'source': instance.source or ''},
-        )
+        try:
+            from apps.automations.services.event_publisher import publish_event
+            publish_event(
+                organization_id=instance.organization_id,
+                event_type='customer.created',
+                entity_type='customer',
+                entity_id=instance.id,
+                actor_id=self.request.user.id,
+                payload={
+                    'full_name': instance.full_name,
+                    'company_name': instance.company_name or '',
+                    'source': instance.source or '',
+                    'status': instance.status,
+                    'owner_id': str(instance.owner_id) if instance.owner_id else None,
+                },
+            )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning('event publish failed: %s', exc)
         Activity.objects.create(
             organization=instance.organization,
             actor=self.request.user,
@@ -236,3 +246,38 @@ class CustomerViewSet(viewsets.ModelViewSet):
             deleted_at__isnull=True,
         ).select_related('stage', 'pipeline').order_by('-created_at')
         return Response({'results': DealListSerializer(qs, many=True).data})
+
+    @action(detail=True, methods=['post'], url_path='follow-up')
+    def set_follow_up(self, request, pk=None):
+        """Устанавливает дату следующего касания и/или response_state."""
+        customer = self.get_object()
+        due_at = request.data.get('follow_up_due_at')
+        resp_state = request.data.get('response_state', '')
+        note_body = request.data.get('note', '')
+
+        update_fields = []
+        if due_at is not None:
+            customer.follow_up_due_at = due_at or None
+            update_fields.append('follow_up_due_at')
+        if resp_state:
+            customer.response_state = resp_state
+            update_fields.append('response_state')
+        if update_fields:
+            customer.save(update_fields=update_fields)
+
+        if note_body:
+            note = Note.objects.create(
+                organization=request.user.organization,
+                author=request.user,
+                customer=customer,
+                body=note_body,
+            )
+            Activity.objects.create(
+                organization=request.user.organization,
+                actor=request.user,
+                customer=customer,
+                type=Activity.Type.NOTE,
+                payload={'body': note_body, 'note_id': str(note.id), 'follow_up': True},
+            )
+
+        return Response(CustomerSerializer(customer).data)
