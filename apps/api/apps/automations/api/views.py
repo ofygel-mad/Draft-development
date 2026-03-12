@@ -1,13 +1,8 @@
-import hashlib
-from datetime import timedelta
-
-from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
-from django.utils import timezone
 
 from apps.automations.models import (
     AutomationRule, AutomationConditionGroup, AutomationCondition,
@@ -19,7 +14,6 @@ from apps.automations.serializers import (
 )
 from apps.audit.models import AuditLog
 from apps.audit.services import log_action
-from apps.core.models import IdempotencyKey
 from apps.core.permissions import HasRolePerm
 
 
@@ -156,23 +150,6 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='from_template')
     def create_from_template(self, request):
         """Создаёт AutomationRule из шаблона по его коду."""
-        idempotency_key = request.headers.get('Idempotency-Key', '').strip()
-        request_body = request.body.decode('utf-8') if request.body else ''
-        request_hash = hashlib.sha256(request_body.encode('utf-8')).hexdigest()
-        if idempotency_key:
-            existing = IdempotencyKey.objects.filter(
-                key=idempotency_key,
-                user=request.user,
-                method=request.method,
-                path=request.path,
-                expires_at__gt=timezone.now(),
-            ).first()
-            if existing and existing.request_hash != request_hash:
-                return Response({'detail': 'Idempotency-Key reused with different payload.'}, status=409)
-            if existing and existing.response_code:
-                replay_status = 200 if existing.response_code == status.HTTP_201_CREATED else existing.response_code
-                return Response(existing.response_body, status=replay_status)
-
         template_code = request.data.get('template_code')
         try:
             template = AutomationTemplate.objects.get(code=template_code, is_active=True)
@@ -220,20 +197,6 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
         )
 
         response_data = AutomationRuleSerializer(rule).data
-        if idempotency_key:
-            IdempotencyKey.objects.update_or_create(
-                key=idempotency_key,
-                user=request.user,
-                method=request.method,
-                path=request.path,
-                defaults={
-                    'request_hash': request_hash,
-                    'response_code': status.HTTP_201_CREATED,
-                    'response_body': response_data,
-                    'expires_at': timezone.now() + timedelta(seconds=settings.IDEMPOTENCY_KEY_TTL_SECONDS),
-                },
-            )
-
         return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'])

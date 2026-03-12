@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,6 +8,9 @@ from apps.activities.models import Activity
 from apps.core.permissions import HasRolePerm
 from ..models import Task
 from ..serializers import TaskSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -61,8 +65,9 @@ class TaskViewSet(viewsets.ModelViewSet):
                 payload={'title': instance.title, 'priority': instance.priority},
             )
 
+        from apps.automations.services.event_publisher import publish_event
+
         try:
-            from apps.automations.services.event_publisher import publish_event
             publish_event(
                 organization_id=instance.organization_id,
                 event_type='task.created',
@@ -78,8 +83,9 @@ class TaskViewSet(viewsets.ModelViewSet):
                     'owner_id': str(instance.assigned_to_id) if instance.assigned_to_id else None,
                 },
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.error('Failed to publish task.created event for task %s: %s', instance.id, exc, exc_info=True)
+            raise
 
     def perform_update(self, serializer):
         customer = serializer.validated_data.get('customer')

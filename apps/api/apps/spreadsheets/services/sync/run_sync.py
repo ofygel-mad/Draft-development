@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from itertools import islice
 
 from django.db import transaction
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from apps.core.services import ensure_default_pipeline
@@ -88,7 +89,13 @@ def _iter_batches(iterator, batch_size: int = BATCH_SIZE):
 def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_policy: str, preview_only: bool = False, idempotency_key: str = '') -> SpreadsheetSyncJob:
     with transaction.atomic():
         document = SpreadsheetDocument.objects.select_for_update().get(id=document.id)
-        mapping = document.mappings.filter(is_active=True).order_by('-created_at').first()
+        ordered_mappings = list(document.mappings.order_by('created_at', 'id'))
+        if mapping_revision > len(ordered_mappings):
+            raise ValidationError({'mapping_revision': 'Mapping revision not found for this document.'})
+
+        mapping = ordered_mappings[mapping_revision - 1]
+        if mapping.organization_id != document.organization_id:
+            raise ValidationError({'mapping_revision': 'Mapping revision does not belong to the document organization.'})
 
         if idempotency_key:
             existing_job = SpreadsheetSyncJob.objects.filter(
@@ -114,13 +121,6 @@ def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_p
         )
 
     totals = {'created': 0, 'updated': 0, 'skipped': 0, 'conflicts': 0}
-    if not mapping:
-        job.status = SpreadsheetJobStatus.FAILED
-        job.totals = totals
-        job.finished_at = timezone.now()
-        job.save(update_fields=['status', 'totals', 'finished_at'])
-        return job
-
     workbook = load_workbook_from_storage(document.current_version.storage_key if document.current_version_id else document.storage_key)
     try:
         if mapping.sheet_name not in workbook.sheetnames:

@@ -68,10 +68,10 @@ class HasRolePerm(BasePermission):
     """
 
     def has_permission(self, request, view):
-        perm = getattr(view, 'required_perm', None)
+        perm = getattr(view, 'required_perm', None) or getattr(view.__class__, 'required_perm', None)
         if not perm:
             action = getattr(view, 'action', None)
-            perm_map = getattr(view, 'required_perm_map', None) or {}
+            perm_map = (getattr(view, 'required_perm_map', None) or getattr(view.__class__, 'required_perm_map', None) or {})
             if action:
                 perm = perm_map.get(action)
         if not perm:

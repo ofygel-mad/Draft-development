@@ -183,7 +183,8 @@ def _header_style():
 
 
 class ExportCustomersExcelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'reports.read'
 
     def get(self, request):
         import openpyxl
@@ -224,7 +225,8 @@ class ExportCustomersExcelView(APIView):
 
 
 class ExportDealsExcelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'reports.read'
 
     def get(self, request):
         import openpyxl
@@ -267,7 +269,8 @@ class ExportDealsExcelView(APIView):
 
 
 class ReportExportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'reports.read'
 
     def get(self, request):
         from apps.customers.models import Customer
@@ -304,7 +307,8 @@ class ReportExportView(APIView):
 
 
 class ManagerKpiView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'reports.read'
 
     def get(self, request):
         from apps.deals.models import Deal

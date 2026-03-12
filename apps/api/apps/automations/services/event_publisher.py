@@ -20,7 +20,7 @@ def publish_event(
     payload: dict,
     source: str = 'system',
     dedupe_key: str | None = None,
-) -> DomainEvent | None:
+) -> DomainEvent:
     """
     Создаёт DomainEvent и ставит в очередь обработку автоматизаций.
     Безопасен при дублировании (dedupe_key).
@@ -71,10 +71,11 @@ def publish_event(
                 },
             )
         except Exception as exc:
-            logger.warning('Webhook dispatch failed: %s', exc)
+            logger.error('Webhook dispatch failed for event %s: %s', event.id, exc, exc_info=True)
+            raise
 
         return event
 
     except Exception as exc:
-        logger.exception('Failed to publish domain event: %s', exc)
-        return None
+        logger.error('Failed to publish domain event: %s', exc, exc_info=True)
+        raise
