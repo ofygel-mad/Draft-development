@@ -143,6 +143,7 @@ function SortableStageRow({
       >
         <Trash2 size={13} />
       </button>
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -242,6 +243,7 @@ function OrgSection() {
           Сохранить
         </Button>
       </div>
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -365,6 +367,7 @@ function TeamSection() {
               </div>
             ))}
       </div>
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -772,6 +775,7 @@ function PipelinesSection() {
           )}
         </div>
       )}
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -876,6 +880,7 @@ function IntegrationsSection() {
           Сохранить
         </Button>
       </div>
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -950,6 +955,7 @@ function ModeSection() {
           </motion.button>
         ))}
       </div>
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -1009,6 +1015,7 @@ function WebhooksSection() {
           </div>
         </div>
       ))}
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -1073,6 +1080,7 @@ function ApiTokensSection() {
           <Button variant="ghost" size="sm" onClick={() => revokeMutation.mutate(t.id)}>Отозвать</Button>
         </div>
       ))}
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -1128,6 +1136,7 @@ function MessageTemplatesSection() {
           <button onClick={() => deleteMut.mutate(t.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
         </div>
       ))}
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }
@@ -1218,6 +1227,7 @@ export default function SettingsPage() {
           </motion.div>
         </AnimatePresence>
       </div>
+          <section style={{ marginTop: 24 }}><h2>Надёжность и безопасность</h2><div style={{ display: 'grid', gap: 12 }}><div>Idempotency-Key включён для чувствительных записывающих операций.</div><div>Request-ID прокидывается в API и логи.</div><div>Sentry и structured logging должны быть активированы через env.</div></div></section>
     </div>
   );
 }

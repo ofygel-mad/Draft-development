@@ -12,6 +12,8 @@ import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { Badge } from '../../shared/ui/Badge';
 import { useIsMobile } from '../../shared/hooks/useIsMobile';
+import { DailyFocus } from '../../widgets/daily-focus/DailyFocus';
+import { TeamPresence } from '../../widgets/team-presence/TeamPresence';
 
 interface DashboardData {
   customers_count:    number;
@@ -183,6 +185,7 @@ function WatchlistBlock({ data, navigate }: {
           })}
         </div>
       )}
+      {!isMobile && <div style={{ marginTop: 20 }}><TeamPresence /></div>}
     </div>
   );
 }
@@ -203,6 +206,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ padding: pad, maxWidth: 1120 }}>
+      <DailyFocus />
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -376,6 +380,7 @@ export default function DashboardPage() {
       {!isLoading && data && (
         <WatchlistBlock data={data} navigate={navigate} />
       )}
+      {!isMobile && <div style={{ marginTop: 20 }}><TeamPresence /></div>}
     </div>
   );
 }

@@ -20,6 +20,10 @@ class SpreadsheetBinding(BaseModel):
     row_index = models.PositiveIntegerField()
     binding_key = models.CharField(max_length=255, db_index=True)
     last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_sync_direction = models.CharField(max_length=32, default='spreadsheet_to_crm')
+    conflict_state = models.CharField(max_length=32, default='clean', db_index=True)
+    crm_record_version = models.PositiveIntegerField(default=1)
+    spreadsheet_row_hash = models.CharField(max_length=128, blank=True, default='', db_index=True)
 
     class Meta:
         db_table = "spreadsheet_bindings"

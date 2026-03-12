@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react';
 import { Component, type ReactNode } from 'react';
 import { Button } from './Button';
 
@@ -20,6 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('[CRM ErrorBoundary]', error, info.componentStack);
+    Sentry.captureException(error);
   }
 
   render() {

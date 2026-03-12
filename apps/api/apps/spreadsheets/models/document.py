@@ -26,6 +26,12 @@ class SpreadsheetDocument(BaseModel):
         db_index=True,
     )
     metadata_json = models.JSONField(default=dict, blank=True)
+    sync_policy = models.CharField(max_length=32, default='manual_review')
+    source_checksum = models.CharField(max_length=128, blank=True, default='', db_index=True)
+    last_error_message = models.TextField(blank=True, default='')
+    last_error_code = models.CharField(max_length=64, blank=True, default='')
+    preview_payload = models.JSONField(default=dict, blank=True)
+    analysis_confidence = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     class Meta:
         db_table = "spreadsheet_documents"

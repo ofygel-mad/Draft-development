@@ -21,14 +21,14 @@ const BASE: CSSProperties = {
   fontFamily: 'var(--font-body)',
   letterSpacing: '0.01em',
   border: 'none',
-  transition: 'background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast)',
+  transition: 'all var(--motion-base) var(--motion-ease, ease)',
   flexShrink: 0,
 };
 
 const VARIANTS: Record<string, CSSProperties> = {
   primary: { background: 'var(--color-amber-gradient)', color: '#fff', boxShadow: 'var(--shadow-amber)' },
   secondary: { background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)', border: '1.5px solid var(--color-border)' },
-  ghost: { background: 'transparent', color: 'var(--color-text-secondary)', border: 'none' },
+  ghost: { background: 'transparent', color: 'var(--color-text-primary)', border: '1px solid transparent' },
   danger: { background: 'var(--color-danger-light)', color: '#991B1B', border: 'none' },
   'amber-outline': { background: 'transparent', color: 'var(--color-amber)', border: '1.5px solid var(--color-amber)' },
 };

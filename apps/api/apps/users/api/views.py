@@ -120,3 +120,28 @@ class UserViewSet(viewsets.ModelViewSet):
         target.status = 'active'
         target.save(update_fields=['status'])
         return Response({'detail': 'Пользователь активирован'})
+
+
+from django.utils import timezone
+from rest_framework.views import APIView
+from apps.core.permissions import HasRolePerm
+
+
+class PresenceHeartbeatView(APIView):
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'presence.read'
+
+    def post(self, request):
+        request.user.last_seen_at = timezone.now()
+        request.user.presence_state = request.data.get('state', 'online')
+        request.user.save(update_fields=['last_seen_at', 'presence_state'])
+        return Response({'status': 'ok'})
+
+
+class TeamPresenceView(APIView):
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'presence.read'
+
+    def get(self, request):
+        rows = User.objects.filter(organization=request.user.organization, status='active').values('id', 'full_name', 'presence_state', 'last_seen_at')
+        return Response(list(rows))

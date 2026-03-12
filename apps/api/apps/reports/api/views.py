@@ -330,3 +330,18 @@ class ManagerKpiView(APIView):
             })
 
         return Response({'managers': result, 'period': start.strftime('%B %Y')})
+
+
+class DailyFocusView(APIView):
+    permission_classes = [IsAuthenticated]
+    required_perm = 'reports.read'
+
+    def get(self, request):
+        from apps.tasks.models import Task
+        from apps.deals.models import Deal
+
+        today = timezone.localdate()
+        overdue = Task.objects.filter(assigned_to=request.user, is_completed=False, due_at__date__lt=today).count()
+        due_today = Task.objects.filter(assigned_to=request.user, is_completed=False, due_at__date=today).count()
+        no_touch_deals = Deal.objects.filter(owner=request.user).count()
+        return Response({'start_day': {'overdue_tasks': overdue, 'tasks_due_today': due_today, 'deals_without_touch': no_touch_deals}, 'watchlist': [{'code': 'overdue_tasks', 'count': overdue, 'priority': 'high'}, {'code': 'due_today', 'count': due_today, 'priority': 'medium'}]})

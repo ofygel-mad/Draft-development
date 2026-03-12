@@ -39,6 +39,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         default=Status.ACTIVE,
     )
     is_staff = models.BooleanField(default=False)
+    last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    presence_state = models.CharField(max_length=16, default='offline', db_index=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['full_name']
