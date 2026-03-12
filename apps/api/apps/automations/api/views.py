@@ -1,3 +1,6 @@
+from hashlib import sha256
+
+from django.core.cache import cache
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -12,10 +15,33 @@ from apps.automations.serializers import (
     AutomationRuleSerializer, AutomationRuleWriteSerializer,
     AutomationTemplateSerializer, AutomationExecutionSerializer,
 )
+from apps.audit.models import AuditLog
+from apps.audit.services import log_action
 
 
 class AutomationRuleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+
+    IDEMPOTENCY_TTL_SECONDS = 60 * 60 * 24
+
+    def _idempotency_cache_key(self, request, action_name: str) -> str | None:
+        idempotency_key = request.headers.get('Idempotency-Key', '').strip()
+        if not idempotency_key:
+            return None
+        payload_hash = sha256(str(request.data).encode('utf-8')).hexdigest()
+        return f'automations:{request.user.organization_id}:{request.user.id}:{action_name}:{idempotency_key}:{payload_hash}'
+
+    def _log_audit(self, *, action: str, rule: AutomationRule, diff: dict | None = None) -> None:
+        log_action(
+            organization_id=self.request.user.organization_id,
+            actor_id=self.request.user.id,
+            action=action,
+            entity_type='automation_rule',
+            entity_id=rule.id,
+            entity_label=rule.name,
+            diff=diff,
+            request=self.request,
+        )
 
     def get_queryset(self):
         return AutomationRule.objects.filter(
@@ -30,10 +56,24 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
         return AutomationRuleSerializer
 
     def perform_create(self, serializer):
-        serializer.save(
+        rule = serializer.save(
             organization=self.request.user.organization,
             created_by=self.request.user,
         )
+        self._log_audit(action=AuditLog.Action.CREATE, rule=rule, diff={'status': rule.status})
+
+    def perform_update(self, serializer):
+        prev_status = serializer.instance.status
+        rule = serializer.save()
+        self._log_audit(
+            action=AuditLog.Action.UPDATE,
+            rule=rule,
+            diff={'status': {'from': prev_status, 'to': rule.status}},
+        )
+
+    def perform_destroy(self, instance):
+        self._log_audit(action=AuditLog.Action.DELETE, rule=instance)
+        instance.delete()
 
     @action(detail=True, methods=['post'], url_path='toggle')
     def toggle_status(self, request, pk=None):
@@ -43,6 +83,7 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
         else:
             rule.status = AutomationRule.Status.ACTIVE
         rule.save(update_fields=['status'])
+        self._log_audit(action=AuditLog.Action.UPDATE, rule=rule, diff={'status': rule.status})
         return Response(AutomationRuleSerializer(rule).data)
 
     @action(detail=True, methods=['post'], url_path='conditions')
@@ -70,6 +111,8 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
                         value_json=c_data.get('value_json'),
                     )
 
+        self._log_audit(action=AuditLog.Action.UPDATE, rule=rule, diff={'conditions_replaced': len(groups_data)})
+
         return Response(AutomationRuleSerializer(rule).data)
 
     @action(detail=True, methods=['post'], url_path='actions')
@@ -91,6 +134,8 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
                     position=a_data.get('position', i),
                 )
 
+        self._log_audit(action=AuditLog.Action.UPDATE, rule=rule, diff={'actions_replaced': len(actions_data)})
+
         return Response(AutomationRuleSerializer(rule).data)
 
     @action(detail=False, methods=['get'])
@@ -101,6 +146,16 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='from_template')
     def create_from_template(self, request):
         """Создаёт AutomationRule из шаблона по его коду."""
+        cache_key = self._idempotency_cache_key(request, 'from_template')
+        if cache_key:
+            existing_rule_id = cache.get(cache_key)
+            if existing_rule_id:
+                try:
+                    existing_rule = self.get_queryset().get(id=existing_rule_id)
+                    return Response(AutomationRuleSerializer(existing_rule).data, status=status.HTTP_200_OK)
+                except AutomationRule.DoesNotExist:
+                    pass
+
         template_code = request.data.get('template_code')
         try:
             template = AutomationTemplate.objects.get(code=template_code, is_active=True)
@@ -139,6 +194,15 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
                     config_json=a_data.get('config_json', {}),
                     position=i,
                 )
+
+        if cache_key:
+            cache.set(cache_key, str(rule.id), timeout=self.IDEMPOTENCY_TTL_SECONDS)
+
+        self._log_audit(
+            action=AuditLog.Action.CREATE,
+            rule=rule,
+            diff={'template_code': template.code, 'is_template_based': True},
+        )
 
         return Response(AutomationRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
 

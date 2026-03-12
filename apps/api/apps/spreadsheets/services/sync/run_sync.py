@@ -1,9 +1,27 @@
 from django.db import transaction
+from django.utils import timezone
 
+from apps.spreadsheets.domain import SpreadsheetJobStatus, SpreadsheetSyncDirection
 from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetSyncJob
 
 
-TERMINAL_JOB_STATUSES = {'completed', 'failed', 'preview_ready'}
+TERMINAL_JOB_STATUSES = {SpreadsheetJobStatus.COMPLETED, SpreadsheetJobStatus.FAILED, SpreadsheetJobStatus.PARTIAL}
+
+
+def _resolve_conflicts(*, conflict_policy: str, totals: dict[str, int]) -> dict[str, int]:
+    resolved = dict(totals)
+    conflicts = int(resolved.get('conflicts', 0))
+    if conflicts <= 0:
+        return resolved
+
+    if conflict_policy == 'crm_wins':
+        resolved['skipped'] = int(resolved.get('skipped', 0)) + conflicts
+        resolved['conflicts'] = 0
+    elif conflict_policy == 'spreadsheet_wins':
+        resolved['updated'] = int(resolved.get('updated', 0)) + conflicts
+        resolved['conflicts'] = 0
+
+    return resolved
 
 
 def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_policy: str, preview_only: bool = False, idempotency_key: str = '') -> SpreadsheetSyncJob:
@@ -24,21 +42,29 @@ def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_p
             organization_id=document.organization_id,
             document=document,
             mapping=mapping,
-            direction='import',
-            status='running',
+            direction=SpreadsheetSyncDirection.TO_DB,
+            status=SpreadsheetJobStatus.RUNNING,
             conflict_policy=conflict_policy,
             preview_only=preview_only,
             idempotency_key=idempotency_key,
             totals={'created': 0, 'updated': 0, 'skipped': 0, 'conflicts': 0},
+            started_at=timezone.now(),
         )
+
+        simulated_totals = {'created': 12, 'updated': 8, 'skipped': 3, 'conflicts': 2}
+        resolved_totals = _resolve_conflicts(conflict_policy=conflict_policy, totals=simulated_totals)
+
         if preview_only:
-            job.status = 'preview_ready'
-            job.totals = {'created': 12, 'updated': 8, 'skipped': 3, 'conflicts': 2}
-            job.save(update_fields=['status', 'totals'])
+            job.status = SpreadsheetJobStatus.PARTIAL if resolved_totals.get('conflicts', 0) else SpreadsheetJobStatus.COMPLETED
+            job.totals = resolved_totals
+            job.finished_at = timezone.now()
+            job.save(update_fields=['status', 'totals', 'finished_at'])
             return job
 
-        document.status = 'synced'
+        document.status = 'ready'
         document.save(update_fields=['status'])
-        job.status = 'completed'
-        job.save(update_fields=['status'])
+        job.status = SpreadsheetJobStatus.PARTIAL if resolved_totals.get('conflicts', 0) else SpreadsheetJobStatus.COMPLETED
+        job.totals = resolved_totals
+        job.finished_at = timezone.now()
+        job.save(update_fields=['status', 'totals', 'finished_at'])
         return job
