@@ -20,7 +20,11 @@ def process_domain_event(self, event_id: str):
 
     try:
         with transaction.atomic():
-            event = DomainEvent.objects.select_for_update().select_related('organization', 'actor').get(id=event_id)
+            # NOTE: `actor` is nullable; joining it with `select_related` while using
+            # `select_for_update()` produces a LEFT OUTER JOIN and Postgres raises
+            # `FOR UPDATE cannot be applied to the nullable side of an outer join`.
+            # Lock only the DomainEvent row and fetch nullable relations lazily.
+            event = DomainEvent.objects.select_for_update().select_related('organization').get(id=event_id)
             if event.is_processed:
                 return
 
