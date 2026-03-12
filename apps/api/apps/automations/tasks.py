@@ -19,6 +19,7 @@ def process_domain_event(self, event_id: str):
     from apps.automations.services.context_builder import build_context
 
     try:
+        executions_to_run = []
         with transaction.atomic():
             # NOTE: `actor` is nullable; joining it with `select_related` while using
             # `select_for_update()` produces a LEFT OUTER JOIN and Postgres raises
@@ -28,11 +29,13 @@ def process_domain_event(self, event_id: str):
             if event.is_processed:
                 return
 
-            rules = AutomationRule.objects.filter(
-                organization=event.organization,
-                trigger_type=event.event_type,
-                status=AutomationRule.Status.ACTIVE,
-            ).prefetch_related('condition_groups__conditions', 'actions')
+            rules = list(
+                AutomationRule.objects.filter(
+                    organization=event.organization,
+                    trigger_type=event.event_type,
+                    status=AutomationRule.Status.ACTIVE,
+                ).prefetch_related('condition_groups__conditions', 'actions')
+            )
 
             context = build_context(event)
 
@@ -61,11 +64,17 @@ def process_domain_event(self, event_id: str):
                 if not created:
                     continue
 
-                execute_actions(execution, rule, event, context)
+                executions_to_run.append((execution.id, rule.id, event.id, context))
 
             event.is_processed = True
             event.processed_at = timezone.now()
             event.save(update_fields=['is_processed', 'processed_at'])
+
+        for execution_id, rule_id, captured_event_id, captured_context in executions_to_run:
+            execution = AutomationExecution.objects.select_related('rule', 'event').get(id=execution_id)
+            rule = AutomationRule.objects.get(id=rule_id)
+            event = DomainEvent.objects.select_related('organization').get(id=captured_event_id)
+            execute_actions(execution, rule, event, captured_context)
 
     except DomainEvent.DoesNotExist:
         logger.warning('DomainEvent %s not found', event_id)
