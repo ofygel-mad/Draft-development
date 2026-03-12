@@ -6,5 +6,5 @@ nixPkgs = ["python312", "python312Packages.pip", "gcc", "postgresql"]
 
 [phases.install]
 cmds = [
-  "pip install -r requirements/prod.txt"
+  "pip install --break-system-packages -r requirements/prod.txt"
 ]
