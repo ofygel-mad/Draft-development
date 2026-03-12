@@ -1,5 +1,6 @@
 import logging
 import csv
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from celery import shared_task
@@ -13,6 +14,15 @@ from apps.spreadsheets.domain import SpreadsheetJobStatus
 from apps.spreadsheets.models import SpreadsheetExportJob
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_parent_dir(storage_path: str) -> None:
+    """Create parent directories when using filesystem-backed storage."""
+    try:
+        resolved_path = Path(default_storage.path(storage_path))
+    except (AttributeError, NotImplementedError):
+        return
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 @shared_task(queue='exports', bind=True, max_retries=3)
@@ -45,6 +55,7 @@ def process_export(self, export_job_id: str) -> None:
             raise ValueError(f'Unsupported export format: {export_format}')
 
         out_rel = f'exports/{job.organization_id}/{job.id}.{export_format}'
+        _ensure_parent_dir(out_rel)
 
         if export_format == 'xlsx':
             with default_storage.open(source_key, 'rb') as src, default_storage.open(out_rel, 'wb') as dst:
