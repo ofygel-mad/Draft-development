@@ -8,9 +8,11 @@ from django.utils import timezone
 from apps.core.services import ensure_default_pipeline
 from apps.customers.models import Customer
 from apps.deals.models import Deal
+from apps.organizations.models import Organization
 from apps.spreadsheets.domain import SpreadsheetJobStatus, SpreadsheetMappingEntityType, SpreadsheetSyncDirection
 from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetSyncJob
 from apps.spreadsheets.parsers.workbook_loader import load_workbook_from_storage
+from apps.users.models import User
 
 TERMINAL_JOB_STATUSES = {SpreadsheetJobStatus.COMPLETED, SpreadsheetJobStatus.FAILED, SpreadsheetJobStatus.PARTIAL}
 
@@ -130,7 +132,8 @@ def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_p
 
             headers = [str(v).strip() if v is not None else '' for v in all_rows[0]]
             data_rows = all_rows[1:]
-            org = document.organization
+            org = Organization.objects.get(id=document.organization_id)
+            owner = User.objects.filter(id=document.uploaded_by_user_id).first()
             default_pipeline = ensure_default_pipeline(org)
             default_stage = default_pipeline.stages.order_by('position').first()
 
@@ -159,7 +162,7 @@ def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_p
                         if not preview_only:
                             Customer.objects.create(
                                 organization=org,
-                                owner=document.uploaded_by_user,
+                                owner=owner,
                                 full_name=data.get('full_name') or phone or email or 'Imported Customer',
                                 company_name=data.get('company_name', ''),
                                 phone=phone,
@@ -215,7 +218,7 @@ def run_sync(*, document: SpreadsheetDocument, mapping_revision: int, conflict_p
                                 customer=customer,
                                 pipeline=default_pipeline,
                                 stage=default_stage,
-                                owner=document.uploaded_by_user,
+                                owner=owner,
                                 title=title,
                                 amount=incoming['amount'],
                                 currency=incoming['currency'],
