@@ -20,6 +20,8 @@
 - API foundation:
   - `POST /api/v1/spreadsheets/upload/` creates a document + initial version and schedules analysis.
   - `GET /api/v1/spreadsheets/documents/` lists spreadsheet documents (optionally by organization).
+  - Export jobs are executed asynchronously via Celery (`exports` queue) with lifecycle states `pending -> running -> completed|failed` and audit event `export` on success.
+  - Sync conflict resolution is policy-driven: `manual_review` keeps conflicts (partial result), `crm_wins` converts conflicts to skipped rows, `spreadsheet_wins` converts conflicts to updates.
 
 ## Wave 04-06 additions
 
