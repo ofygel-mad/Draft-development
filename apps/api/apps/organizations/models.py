@@ -1,5 +1,5 @@
 import uuid
-from django.db import models
+from django.db import models, transaction
 from apps.core.models import BaseModel
 
 
@@ -82,10 +82,12 @@ def apply_mode_capabilities(org: Organization) -> None:
         all_caps.update(MODE_CAPABILITIES.get(m, []))
         if m == org.mode:
             break
-    OrganizationCapability.objects.bulk_create(
-        [OrganizationCapability(organization=org, capability_code=c) for c in all_caps],
-        ignore_conflicts=True,
-    )
+    with transaction.atomic():
+        OrganizationCapability.objects.filter(organization=org).delete()
+        OrganizationCapability.objects.bulk_create([
+            OrganizationCapability(organization=org, capability_code=c)
+            for c in all_caps
+        ])
 
 
 class CustomField(models.Model):

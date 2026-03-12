@@ -20,7 +20,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         unread_only = self.request.query_params.get('unread')
         if unread_only:
             qs = qs.filter(is_read=False)
-        return qs[:100]
+        return qs.order_by('-created_at')
 
     @action(detail=False, methods=['post'], url_path='read_all')
     def read_all(self, request):

@@ -1,8 +1,23 @@
 import csv
+import re
 import logging
 from typing import Any
 
+import phonenumbers
+
 logger = logging.getLogger(__name__)
+
+
+def _normalize_phone(phone: str) -> str:
+    if not phone:
+        return phone
+    try:
+        parsed = phonenumbers.parse(phone, 'KZ')
+        if phonenumbers.is_valid_number(parsed):
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    except Exception:
+        pass
+    return re.sub(r'[\s\-\(\)\+]', '', phone)
 
 
 class ImportProcessor:
@@ -76,6 +91,9 @@ class ImportProcessor:
                         val = str(row[col_idx]).strip()
                         if val and val != 'None':
                             data[field] = val
+
+                if data.get('phone'):
+                    data['phone'] = _normalize_phone(data['phone'])
 
                 if not data.get('full_name') and not data.get('phone'):
                     errors.append({'row': row_idx + 2, 'error': 'Нет имени и телефона'})

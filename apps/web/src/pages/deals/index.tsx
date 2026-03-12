@@ -21,6 +21,7 @@ import { useIsMobile } from '../../shared/hooks/useIsMobile';
 import { useSuggestionsStore } from '../../shared/stores/suggestions';
 import { nanoid } from 'nanoid';
 import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
+import { useSSE } from '../../shared/hooks/useSSE';
 
 interface DealCard {
   id:string; title:string; amount?:number; currency:string; status:string;
@@ -143,6 +144,12 @@ export default function DealsPage() {
   const [activeId, setActiveId] = useState<string|null>(null);
   const [createDrawer, setCreateDrawer] = useState(false);
   const isMobile = useIsMobile();
+
+  useSSE((event) => {
+    if (event === 'deal_update') {
+      qc.invalidateQueries({ queryKey: ['deals-board'] });
+    }
+  });
 
   useEffect(() => {
     const handler = () => setCreateDrawer(true);

@@ -46,6 +46,22 @@ class SSEView(APIView):
                             'created_at': n['created_at'].isoformat(),
                         })
 
+
+                    from apps.activities.models import Activity
+                    deal_updates = Activity.objects.filter(
+                        organization=user.organization,
+                        type__in=['stage_change', 'deal_created'],
+                        created_at__gt=last_check,
+                    ).exclude(actor=user).values('type', 'deal_id', 'payload')
+
+                    for a in deal_updates:
+                        if a['deal_id']:
+                            yield _format_event('deal_update', {
+                                'type': a['type'],
+                                'deal_id': str(a['deal_id']),
+                                'payload': a['payload'],
+                            })
+
                     last_check = timezone.now()
                 except Exception as exc:
                     logger.warning('SSE check error: %s', exc)

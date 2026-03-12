@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from apps.activities.models import Activity
 from ..models import Task
 from ..serializers import TaskSerializer
 
@@ -27,10 +28,19 @@ class TaskViewSet(viewsets.ModelViewSet):
         return qs.select_related('assigned_to', 'customer', 'deal')
 
     def perform_create(self, serializer):
-        serializer.save(
+        instance = serializer.save(
             organization=self.request.user.organization,
             created_by=self.request.user,
         )
+        if instance.customer_id:
+            Activity.objects.create(
+                organization=instance.organization,
+                actor=self.request.user,
+                customer_id=instance.customer_id,
+                task=instance,
+                type=Activity.Type.TASK_CREATED,
+                payload={'title': instance.title, 'priority': instance.priority},
+            )
 
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
@@ -38,6 +48,15 @@ class TaskViewSet(viewsets.ModelViewSet):
         task.status = Task.Status.DONE
         task.completed_at = timezone.now()
         task.save(update_fields=['status', 'completed_at'])
+        if task.customer_id:
+            Activity.objects.create(
+                organization=task.organization,
+                actor=request.user,
+                customer_id=task.customer_id,
+                task=task,
+                type=Activity.Type.TASK_DONE,
+                payload={'title': task.title},
+            )
         return Response(TaskSerializer(task).data)
 
     @action(detail=True, methods=['post'])

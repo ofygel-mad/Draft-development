@@ -51,7 +51,7 @@ class DealViewSet(viewsets.ModelViewSet):
         log_action(
             organization_id=instance.organization_id,
             actor_id=self.request.user.id,
-            action='deal.created',
+            action='create',
             entity_type='deal',
             entity_id=str(instance.id),
             entity_label=instance.title,
@@ -256,7 +256,7 @@ class DealViewSet(viewsets.ModelViewSet):
             log_action(
                 organization_id=deal.organization_id,
                 actor_id=request.user.id,
-                action='deal.stage_changed',
+                action='update',
                 entity_type='deal',
                 entity_id=str(deal.id),
                 entity_label=deal.title,

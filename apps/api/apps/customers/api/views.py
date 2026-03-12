@@ -49,10 +49,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
             actor_id=self.request.user.id,
             payload={'status': instance.status, 'source': instance.source or ''},
         )
+        Activity.objects.create(
+            organization=instance.organization,
+            actor=self.request.user,
+            customer=instance,
+            type=Activity.Type.CUSTOMER_CREATED,
+            payload={'full_name': instance.full_name, 'source': instance.source or ''},
+        )
         log_action(
             organization_id=instance.organization_id,
             actor_id=self.request.user.id,
-            action='customer.created',
+            action='create',
             entity_type='customer',
             entity_id=str(instance.id),
             entity_label=instance.full_name,
@@ -65,7 +72,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         log_action(
             organization_id=instance.organization_id,
             actor_id=self.request.user.id,
-            action='customer.updated',
+            action='update',
             entity_type='customer',
             entity_id=str(instance.id),
             entity_label=instance.full_name,

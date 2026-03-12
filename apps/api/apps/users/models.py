@@ -19,6 +19,11 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Активный'
+        INACTIVE = 'inactive', 'Неактивный'
+        SUSPENDED = 'suspended', 'Приостановлен'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
         'organizations.Organization', on_delete=models.CASCADE,
@@ -28,7 +33,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     full_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=32, blank=True)
     avatar_url = models.URLField(blank=True, null=True)
-    status = models.CharField(max_length=20, default='active')
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
     is_staff = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'

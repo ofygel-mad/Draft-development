@@ -16,6 +16,7 @@ class Activity(BaseModel):
         TASK_CREATED = 'task_created', 'Задача создана'
         TASK_DONE = 'task_done', 'Задача выполнена'
         DOCUMENT_SENT = 'document_sent', 'Документ отправлен'
+        CUSTOMER_CREATED = 'customer_created', 'Клиент добавлен'
 
     organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='activities')
     actor = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)

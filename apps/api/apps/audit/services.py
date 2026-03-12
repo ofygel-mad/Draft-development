@@ -20,6 +20,11 @@ def log_action(
     request=None,
 ) -> AuditLog | None:
     try:
+        _valid = {c.value for c in AuditLog.Action}
+        if action not in _valid:
+            logger.warning('audit: invalid action %r — falling back to update', action)
+            action = 'update'
+
         ip = None
         ua = ''
         if request:
