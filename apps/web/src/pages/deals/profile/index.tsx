@@ -85,19 +85,22 @@ const ACTIVITY_CONFIG: Record<
   string,
   { icon: typeof Clock; color: string; label: string }
 > = {
-  "deal.created": {
-    icon: TrendingUp,
-    color: "#10B981",
-    label: "Сделка создана",
-  },
-  "deal.stage_changed": {
-    icon: ArrowRight,
-    color: "#F59E0B",
-    label: "Смена этапа",
-  },
-  "note.created": { icon: MessageSquare, color: "#3B82F6", label: "Заметка" },
-  "task.created": { icon: CheckSquare, color: "#8B5CF6", label: "Задача" },
-  "deal.updated": { icon: Edit3, color: "#6B7280", label: "Обновление" },
+  "deal_created":       { icon: TrendingUp,    color: "#10B981", label: "Сделка создана" },
+  "stage_change":       { icon: ArrowRight,    color: "#F59E0B", label: "Смена этапа" },
+  "note":               { icon: MessageSquare, color: "#3B82F6", label: "Заметка" },
+  "task_created":       { icon: CheckSquare,   color: "#8B5CF6", label: "Задача создана" },
+  "task_done":          { icon: CheckSquare,   color: "#10B981", label: "Задача выполнена" },
+  "status_change":      { icon: Edit3,         color: "#6B7280", label: "Смена статуса" },
+  "customer_created":   { icon: TrendingUp,    color: "#10B981", label: "Клиент добавлен" },
+  "call":               { icon: Phone,         color: "#3B82F6", label: "Звонок" },
+  "email_sent":         { icon: Mail,          color: "#6366F1", label: "Email отправлен" },
+  "email_in":           { icon: Mail,          color: "#8B5CF6", label: "Email получен" },
+  "whatsapp":           { icon: MessageSquare, color: "#25D366", label: "WhatsApp" },
+  "deal.created":       { icon: TrendingUp,    color: "#10B981", label: "Сделка создана" },
+  "deal.stage_changed": { icon: ArrowRight,    color: "#F59E0B", label: "Смена этапа" },
+  "note.created":       { icon: MessageSquare, color: "#3B82F6", label: "Заметка" },
+  "task.created":       { icon: CheckSquare,   color: "#8B5CF6", label: "Задача" },
+  "deal.updated":       { icon: Edit3,         color: "#6B7280", label: "Обновление" },
 };
 
 function InlineAmount({

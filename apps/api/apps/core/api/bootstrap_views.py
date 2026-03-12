@@ -27,14 +27,13 @@ class SessionBootstrapView(APIView):
                 'unread_notifications': Notification.objects.filter(recipient=user, is_read=False).count(),
                 'tasks_today': Task.objects.filter(assigned_to=user, status=Task.Status.OPEN, due_at__date=today).count(),
                 'deals_at_risk': Deal.objects.filter(
-                    owner=user,
-                    status='open',
-                    deleted_at__isnull=True,
-                    stage__name__in=['Переговоры', 'Предложение'],
+                    owner=user, status='open', deleted_at__isnull=True,
                 ).count(),
             },
             'daily_summary': {
-                'customers_created_today': Customer.objects.filter(owner=user, created_at__date=today).count(),
+                'customers_created_today': Customer.objects.filter(
+                    owner=user, created_at__date=today, deleted_at__isnull=True,
+                ).count(),
                 'open_tasks': Task.objects.filter(assigned_to=user, status=Task.Status.OPEN).count(),
                 'overdue_tasks': Task.objects.filter(assigned_to=user, status=Task.Status.OPEN, due_at__date__lt=today).count(),
             },

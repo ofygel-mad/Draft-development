@@ -11,6 +11,16 @@ from ..models import Deal
 from ..serializers import DealSerializer, DealListSerializer
 
 
+def _invalidate_dashboard_cache(organization_id):
+    """Инвалидирует кэш дашборда для всех пользователей организации."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    for uid in User.objects.filter(
+        organization_id=organization_id,
+    ).values_list('id', flat=True):
+        cache.delete(f'dashboard:{organization_id}:{uid}')
+
+
 class DealViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -57,7 +67,7 @@ class DealViewSet(viewsets.ModelViewSet):
             entity_label=instance.title,
             request=self.request,
         )
-        cache.delete(f'dashboard:{instance.organization_id}')
+        _invalidate_dashboard_cache(instance.organization_id)
 
     def perform_destroy(self, instance):
         instance.deleted_at = timezone.now()

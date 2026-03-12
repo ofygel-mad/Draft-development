@@ -1,12 +1,6 @@
-#!/bin/sh
-set -e
-
+#!/usr/bin/env sh
+set -eu
 cd /app/apps/api
-
 echo "Running migrations..."
 python manage.py migrate --noinput
-
-echo "Seeding automation templates..."
-python manage.py seed_automation_templates || true
-
-echo "Done."
+echo "Migrations complete."

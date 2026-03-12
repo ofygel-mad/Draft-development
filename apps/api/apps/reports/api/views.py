@@ -364,5 +364,14 @@ class DailyFocusView(APIView):
         today = timezone.localdate()
         overdue = Task.objects.filter(assigned_to=request.user, status='open', due_at__date__lt=today).count()
         due_today = Task.objects.filter(assigned_to=request.user, status='open', due_at__date=today).count()
-        no_touch_deals = Deal.objects.filter(owner=request.user, status='open', deleted_at__isnull=True).count()
+        from django.db.models import Q
+        three_days_ago = timezone.now() - timedelta(days=3)
+        no_touch_deals = Deal.objects.filter(
+            owner=request.user,
+            status='open',
+            deleted_at__isnull=True,
+        ).filter(
+            Q(last_activity_at__lt=three_days_ago) |
+            Q(last_activity_at__isnull=True, created_at__lt=three_days_ago)
+        ).count()
         return Response({'start_day': {'overdue_tasks': overdue, 'tasks_due_today': due_today, 'deals_without_touch': no_touch_deals}, 'watchlist': [{'code': 'overdue_tasks', 'count': overdue, 'priority': 'high'}, {'code': 'due_today', 'count': due_today, 'priority': 'medium'}]})

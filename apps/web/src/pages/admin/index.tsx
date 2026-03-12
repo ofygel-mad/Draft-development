@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 
 interface TeamMember { id: string; full_name: string; email: string; status: string; role?: string; }
 interface AuditEntry { id: string; action: string; entity_type: string; entity_label: string; actor?: { full_name: string }; created_at: string; ip_address?: string; }
-interface DashboardStats { total_customers: number; active_deals: number; total_users: number; deals_won_month: number; }
+interface DashboardStats { customers_count: number; active_deals_count: number; revenue_month: number; tasks_today: number; overdue_tasks: number; }
 
 const ROLE_COLORS: Record<string, string> = {
   owner: '#8B5CF6', admin: '#D97706', manager: '#3B82F6', viewer: '#6B7280',
@@ -63,7 +63,7 @@ export default function AdminPage() {
 
   const { data: auditData, isLoading: auditLoading } = useQuery<{ results: AuditEntry[] }>({
     queryKey: ['audit'],
-    queryFn: () => api.get('/audit/logs/?page_size=50'),
+    queryFn: () => api.get('/audit/?page_size=50'),
     enabled: tab === 'audit',
   });
 
@@ -94,7 +94,7 @@ export default function AdminPage() {
     if (!inviteEmail) return;
     setInviting(true);
     try {
-      const res: any = await api.post('/auth/invite', { email: inviteEmail, role: inviteRole });
+      const res: any = await api.post('/auth/invite/', { email: inviteEmail, role: inviteRole });
       toast.success(res.detail ?? 'Приглашение отправлено');
       setInviteEmail('');
       setShowInviteForm(false);
@@ -142,10 +142,10 @@ export default function AdminPage() {
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {[
-                { label: 'Клиентов всего', value: statsLoading ? null : stats?.total_customers, icon: <Users size={20} />, color: '#3B82F6' },
-                { label: 'Активных сделок', value: statsLoading ? null : stats?.active_deals, icon: <TrendingUp size={20} />, color: '#10B981' },
-                { label: 'Сотрудников', value: statsLoading ? null : stats?.total_users, icon: <UserCheck size={20} />, color: '#D97706' },
-                { label: 'Выигранных сделок (месяц)', value: statsLoading ? null : stats?.deals_won_month, icon: <CheckCircle2 size={20} />, color: '#8B5CF6' },
+                { label: 'Клиентов всего', value: statsLoading ? null : stats?.customers_count, icon: <Users size={20} />, color: '#3B82F6' },
+                { label: 'Активных сделок', value: statsLoading ? null : stats?.active_deals_count, icon: <TrendingUp size={20} />, color: '#10B981' },
+                { label: 'Задач сегодня', value: statsLoading ? null : stats?.tasks_today, icon: <UserCheck size={20} />, color: '#D97706' },
+                { label: 'Просроченных задач', value: statsLoading ? null : stats?.overdue_tasks, icon: <CheckCircle2 size={20} />, color: '#8B5CF6' },
               ].map((card) => (
                 <div key={card.label} style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px' }}>
                   <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: `${card.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.color, marginBottom: 12 }}>

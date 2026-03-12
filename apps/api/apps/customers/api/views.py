@@ -91,13 +91,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
         except Exception as exc:
             import logging
             logging.getLogger(__name__).warning('event publish failed: %s', exc)
-        Activity.objects.create(
-            organization=instance.organization,
-            actor=self.request.user,
-            customer=instance,
-            type=Activity.Type.CUSTOMER_CREATED,
-            payload={'full_name': instance.full_name, 'source': instance.source or ''},
-        )
+        # ИСПРАВЛЕНО: убрано дублирующее Activity.CUSTOMER_CREATED
+        # уже создаётся в activities/signals.py → on_customer_created
         log_action(
             organization_id=instance.organization_id,
             actor_id=self.request.user.id,
