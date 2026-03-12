@@ -27,6 +27,10 @@ class SpreadsheetMapping(BaseModel):
     mapping_json = models.JSONField(default=dict)
     is_active = models.BooleanField(default=True, db_index=True)
     created_by_user_id = models.UUIDField(db_index=True, null=True, blank=True)
+    sample_values = models.JSONField(default=list, blank=True)
+    warnings = models.JSONField(default=list, blank=True)
+    is_user_confirmed = models.BooleanField(default=False)
+    confidence = models.FloatField(default=0, db_index=True)
 
     class Meta:
         db_table = "spreadsheet_mappings"

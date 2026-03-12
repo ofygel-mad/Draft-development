@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, CheckSquare, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, CheckSquare, MoreHorizontal, Smartphone } from 'lucide-react';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePwaInstall } from '../../shared/hooks/usePwaInstall';
 
 const PRIMARY_NAV = [
   { to: '/', icon: LayoutDashboard, label: 'Главная' },
@@ -20,6 +21,7 @@ const MORE_LABELS: Record<string, string> = {
 
 export function MobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
+  const { canInstall, install } = usePwaInstall();
 
   return (
     <>
@@ -84,6 +86,7 @@ export function MobileNav() {
           <span>Ещё</span>
         </button>
       </nav>
+      {canInstall && <button onClick={install} style={{ position: 'fixed', right: 16, bottom: 80, zIndex: 50 }}><Smartphone size={18} /> Установить</button>}
     </>
   );
 }

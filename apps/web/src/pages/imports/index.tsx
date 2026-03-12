@@ -8,6 +8,7 @@ import { Button } from '../../shared/ui/Button';
 import { Skeleton } from '../../shared/ui/Skeleton';
 import { toast } from 'sonner';
 import { useDocumentTitle } from '../../shared/hooks/useDocumentTitle';
+import { SpreadsheetReview } from '../../widgets/spreadsheet-review/SpreadsheetReview';
 
 const CRM_FIELDS = [
   { value: '', label: '— Не импортировать —' },

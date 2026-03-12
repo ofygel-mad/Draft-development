@@ -32,6 +32,10 @@ class SpreadsheetSyncJob(BaseModel):
     summary_json = models.JSONField(default=dict, blank=True)
     error_text = models.TextField(blank=True)
     created_by_user_id = models.UUIDField(db_index=True, null=True, blank=True)
+    idempotency_key = models.CharField(max_length=128, blank=True, default='', db_index=True)
+    preview_only = models.BooleanField(default=False)
+    totals = models.JSONField(default=dict, blank=True)
+    conflict_policy = models.CharField(max_length=32, default='manual_review')
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
 

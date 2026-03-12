@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { nanoid } from 'nanoid';
 import { useAuthStore } from '../stores/auth';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -12,6 +13,10 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  config.headers['X-Request-ID'] = nanoid();
+  if (['post', 'put', 'patch', 'delete'].includes((config.method ?? '').toLowerCase())) {
+    config.headers['Idempotency-Key'] = config.headers['Idempotency-Key'] ?? nanoid();
+  }
   return config;
 });
 

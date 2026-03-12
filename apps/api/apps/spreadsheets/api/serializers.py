@@ -33,3 +33,34 @@ class SpreadsheetUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return upload_spreadsheet(**validated_data).document
+
+
+from apps.spreadsheets.models import SpreadsheetMapping, SpreadsheetSyncJob
+
+
+class SpreadsheetMappingReviewSerializer(serializers.Serializer):
+    column_key = serializers.CharField()
+    target_entity = serializers.ChoiceField(choices=['customer', 'deal', 'task', 'organization'])
+    target_field = serializers.CharField()
+    confidence = serializers.FloatField()
+    warnings = serializers.ListField(child=serializers.CharField(), required=False)
+    sample_values = serializers.ListField(child=serializers.CharField(), required=False)
+
+
+class SpreadsheetAnalysisPreviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpreadsheetDocument
+        fields = ['id','status','analysis_confidence','preview_payload','last_error_code','last_error_message','sync_policy','created_at']
+
+
+class SpreadsheetSyncRequestSerializer(serializers.Serializer):
+    document_id = serializers.UUIDField()
+    mapping_revision = serializers.IntegerField(min_value=1)
+    conflict_policy = serializers.ChoiceField(choices=['crm_wins', 'spreadsheet_wins', 'manual_review'])
+    preview_only = serializers.BooleanField(default=False)
+
+
+class SpreadsheetSyncJobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpreadsheetSyncJob
+        fields = '__all__'

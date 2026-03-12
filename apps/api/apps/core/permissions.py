@@ -8,14 +8,17 @@ ROLE_PERMS: dict[str, set[str]] = {
         'customers.*', 'deals.*', 'tasks.*', 'pipelines.*',
         'automations.*', 'reports.*', 'users.list', 'users.invite',
         'imports.*', 'audit.read', 'organizations.edit',
+        'spreadsheets.*', 'bulk.*', 'presence.read', 'exports.*',
     },
     'manager': {
         'customers.read', 'customers.create', 'customers.update',
         'deals.read', 'deals.create', 'deals.update', 'deals.change_stage',
-        'tasks.*', 'reports.basic', 'imports.upload',
+        'tasks.*', 'reports.basic', 'imports.upload', 'spreadsheets.read',
+        'spreadsheets.upload', 'spreadsheets.map', 'spreadsheets.sync',
+        'bulk.read', 'bulk.update', 'presence.read',
     },
     'viewer': {
-        'customers.read', 'deals.read', 'tasks.read', 'reports.read',
+        'customers.read', 'deals.read', 'tasks.read', 'reports.read', 'spreadsheets.read',
     },
 }
 
@@ -34,6 +37,13 @@ def get_user_role(user) -> str:
     role = m or 'viewer'
     cache.set(cache_key, role, timeout=300)
     return role
+
+
+def get_user_capabilities(user) -> set[str]:
+    if not user or not user.is_authenticated:
+        return set()
+    role = get_user_role(user)
+    return ROLE_PERMS.get(role, set())
 
 
 def user_can(user, permission: str) -> bool:
@@ -82,3 +92,13 @@ class IsOrgOwner(BasePermission):
             return False
         role = get_user_role(request.user)
         return role == 'owner'
+
+
+class HasAnyRolePerm(BasePermission):
+    required_perms: tuple[str, ...] = ()
+
+    def has_permission(self, request, view):
+        perms = getattr(view, 'required_perms', self.required_perms)
+        if not perms:
+            return request.user and request.user.is_authenticated
+        return any(user_can(request.user, perm) for perm in perms)
