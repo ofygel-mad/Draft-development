@@ -1,4 +1,3 @@
-from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
@@ -12,15 +11,13 @@ from apps.customers.selectors.customer_queries import list_customers
 from apps.customers.serializers import CustomerListSerializer, CustomerSerializer
 from apps.audit.services import log_action
 from apps.core.permissions import user_can
+from apps.core.services import bump_dashboard_cache_version
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
     @staticmethod
     def _invalidate_dashboard_cache(organization_id):
-        from apps.users.models import User
-
-        for uid in User.objects.filter(organization_id=organization_id).values_list('id', flat=True):
-            cache.delete(f'dashboard:{organization_id}:{uid}')
+        bump_dashboard_cache_version(organization_id)
 
     permission_classes = [IsAuthenticated]
 

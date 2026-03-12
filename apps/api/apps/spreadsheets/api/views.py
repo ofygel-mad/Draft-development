@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 from rest_framework.response import Response
+from django.core.files.storage import default_storage
 from apps.core.permissions import HasRolePerm
 from apps.spreadsheets.api.serializers import (
     SpreadsheetDocumentSerializer,
@@ -36,7 +37,6 @@ class SpreadsheetUploadView(APIView):
     def post(self, request):
         import os
         import uuid
-        from django.conf import settings as django_settings
 
         file = request.FILES.get('file')
         if not file:
@@ -50,14 +50,10 @@ class SpreadsheetUploadView(APIView):
                 status=400,
             )
 
-        upload_dir = os.path.join(django_settings.MEDIA_ROOT, 'spreadsheets')
-        os.makedirs(upload_dir, exist_ok=True)
         storage_key = f'spreadsheets/{uuid.uuid4()}{ext}'
-        file_path = os.path.join(django_settings.MEDIA_ROOT, storage_key)
-
-        with open(file_path, 'wb') as f:
+        with default_storage.open(storage_key, 'wb') as dest:
             for chunk in file.chunks():
-                f.write(chunk)
+                dest.write(chunk)
 
         result = upload_workbook(
             organization_id=request.user.organization_id,

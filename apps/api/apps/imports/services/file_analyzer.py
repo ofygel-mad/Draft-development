@@ -1,6 +1,9 @@
 import logging
 import os
+from tempfile import NamedTemporaryFile
 from typing import Any
+
+from django.core.files.storage import default_storage
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +48,19 @@ def analyze_file(file_path: str, import_type: str) -> dict[str, Any]:
 def _analyze_excel(file_path: str) -> dict:
     import openpyxl
 
-    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-    ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
-    wb.close()
+    if default_storage.exists(file_path):
+        with default_storage.open(file_path, 'rb') as source, NamedTemporaryFile(suffix=os.path.splitext(file_path)[1].lower()) as tmp:
+            tmp.write(source.read())
+            tmp.flush()
+            wb = openpyxl.load_workbook(tmp.name, read_only=True, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            wb.close()
+    else:
+        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        wb.close()
 
     if not rows:
         return {'headers': [], 'rows': [], 'total': 0, 'auto_mapping': {}}
@@ -71,9 +83,14 @@ def _analyze_excel(file_path: str) -> dict:
 def _analyze_csv(file_path: str) -> dict:
     import csv
 
-    with open(file_path, encoding='utf-8-sig', newline='') as f:
-        reader = csv.reader(f)
-        rows = list(reader)
+    if default_storage.exists(file_path):
+        with default_storage.open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+    else:
+        with open(file_path, encoding='utf-8-sig', newline='') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
 
     if not rows:
         return {'headers': [], 'rows': [], 'total': 0, 'auto_mapping': {}}

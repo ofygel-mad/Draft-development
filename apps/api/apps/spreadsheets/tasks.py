@@ -3,7 +3,7 @@ from django.db import transaction
 
 from apps.spreadsheets.domain import SpreadsheetDocumentStatus
 from apps.spreadsheets.models import SpreadsheetDocument, SpreadsheetVersion
-from apps.spreadsheets.parsers.workbook_loader import load_workbook_from_path
+from apps.spreadsheets.parsers.workbook_loader import load_workbook_from_storage
 from apps.spreadsheets.services.analysis.analyze_workbook import analyze_workbook
 
 
@@ -11,7 +11,7 @@ from apps.spreadsheets.services.analysis.analyze_workbook import analyze_workboo
 def analyze_spreadsheet_version(version_id: str) -> None:
     version = SpreadsheetVersion.objects.select_related("document").get(id=version_id)
     try:
-        workbook = load_workbook_from_path(version.storage_key)
+        workbook = load_workbook_from_storage(version.storage_key)
         try:
             with transaction.atomic():
                 analyze_workbook(version=version, workbook=workbook)

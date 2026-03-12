@@ -2,27 +2,35 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 from apps.audit.services import log_action
 from apps.automations.services.event_publisher import publish_event
+from apps.core.permissions import HasRolePerm
+from apps.core.services import bump_dashboard_cache_version
 from ..models import Deal
 from ..serializers import DealSerializer, DealListSerializer
 
 
 def _invalidate_dashboard_cache(organization_id):
-    """Инвалидирует кэш дашборда для всех пользователей организации."""
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    for uid in User.objects.filter(
-        organization_id=organization_id,
-    ).values_list('id', flat=True):
-        cache.delete(f'dashboard:{organization_id}:{uid}')
+    """Инвалидирует кэш дашборда на уровне организации."""
+    bump_dashboard_cache_version(organization_id)
 
 
 class DealViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm_map = {
+        'list': 'deals.read',
+        'retrieve': 'deals.read',
+        'board': 'deals.read',
+        'activities': 'deals.read',
+        'invoice': 'deals.read',
+        'create': 'deals.create',
+        'update': 'deals.update',
+        'partial_update': 'deals.update',
+        'change_stage': 'deals.change_stage',
+        'destroy': 'deals.update',
+    }
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'customer__full_name']
     ordering = ['-created_at']

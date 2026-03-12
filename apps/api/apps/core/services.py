@@ -1,3 +1,18 @@
+from django.core.cache import cache
+
+
+def get_dashboard_cache_version(organization_id) -> int:
+    return int(cache.get(f'dashboard_version:{organization_id}', 1))
+
+
+def bump_dashboard_cache_version(organization_id) -> None:
+    key = f'dashboard_version:{organization_id}'
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 2, timeout=None)
+
+
 def ensure_default_pipeline(organization):
     """Creates a default pipeline with basic stages if none exist."""
     from apps.pipelines.models import Pipeline, PipelineStage

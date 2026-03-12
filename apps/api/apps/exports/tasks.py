@@ -1,20 +1,16 @@
 import logging
-from pathlib import Path
 import csv
+from tempfile import NamedTemporaryFile
 
 from celery import shared_task
-from django.conf import settings
+from django.core.files.storage import default_storage
 from django.utils import timezone
+from openpyxl import load_workbook
 
 from apps.audit.models import AuditLog
 from apps.audit.services import log_action
 from apps.spreadsheets.domain import SpreadsheetJobStatus
 from apps.spreadsheets.models import SpreadsheetExportJob
-
-try:
-    from openpyxl import load_workbook
-except Exception:  # pragma: no cover
-    load_workbook = None
 
 logger = logging.getLogger(__name__)
 
@@ -40,47 +36,46 @@ def process_export(self, export_job_id: str) -> None:
 
     try:
         source_key = (job.version.storage_key if job.version_id else job.document.storage_key).strip()
-        source_path = Path(source_key)
-        if not source_path.is_absolute():
-            source_path = Path(settings.MEDIA_ROOT) / source_key
-        if not source_path.exists():
-            raise FileNotFoundError(f'Source file not found: {source_path}')
+        if not default_storage.exists(source_key):
+            raise FileNotFoundError(f'Source file not found: {source_key}')
 
-        export_format = str(job.summary_json.get('format') or source_path.suffix.lstrip('.') or 'xlsx').lower()
+        source_suffix = source_key.rsplit('.', 1)[-1].lower() if '.' in source_key else 'xlsx'
+        export_format = str(job.summary_json.get('format') or source_suffix or 'xlsx').lower()
         if export_format not in {'csv', 'xlsx'}:
             raise ValueError(f'Unsupported export format: {export_format}')
 
-        out_rel = Path('exports') / str(job.organization_id) / f'{job.id}.{export_format}'
-        out_abs = Path(settings.MEDIA_ROOT) / out_rel
-        out_abs.parent.mkdir(parents=True, exist_ok=True)
+        out_rel = f'exports/{job.organization_id}/{job.id}.{export_format}'
 
         if export_format == 'xlsx':
-            out_abs.write_bytes(source_path.read_bytes())
+            with default_storage.open(source_key, 'rb') as src, default_storage.open(out_rel, 'wb') as dst:
+                dst.write(src.read())
         else:
-            if source_path.suffix.lower() == '.csv':
-                out_abs.write_bytes(source_path.read_bytes())
+            if source_suffix == 'csv':
+                with default_storage.open(source_key, 'rb') as src, default_storage.open(out_rel, 'wb') as dst:
+                    dst.write(src.read())
             else:
-                if load_workbook is None:
-                    raise RuntimeError('openpyxl is not available for xlsx->csv export')
-                workbook = load_workbook(filename=str(source_path), data_only=True, read_only=True)
-                try:
-                    worksheet = workbook.worksheets[0]
-                    with out_abs.open('w', newline='', encoding='utf-8') as csv_file:
-                        writer = csv.writer(csv_file)
-                        for row in worksheet.iter_rows(values_only=True):
-                            writer.writerow(['' if value is None else value for value in row])
-                finally:
-                    workbook.close()
+                with default_storage.open(source_key, 'rb') as source, NamedTemporaryFile(suffix='.xlsx') as tmp:
+                    tmp.write(source.read())
+                    tmp.flush()
+                    workbook = load_workbook(filename=tmp.name, data_only=True, read_only=True)
+                    try:
+                        worksheet = workbook.worksheets[0]
+                        with default_storage.open(out_rel, 'w') as csv_file:
+                            writer = csv.writer(csv_file)
+                            for row in worksheet.iter_rows(values_only=True):
+                                writer.writerow(['' if value is None else value for value in row])
+                    finally:
+                        workbook.close()
 
         summary = {
             **(job.summary_json or {}),
             'format': export_format,
-            'bytes': out_abs.stat().st_size,
+            'bytes': default_storage.size(out_rel),
             'source_storage_key': source_key,
         }
         SpreadsheetExportJob.objects.filter(id=job.id).update(
             status=SpreadsheetJobStatus.COMPLETED,
-            output_storage_key=str(out_rel),
+            output_storage_key=out_rel,
             summary_json=summary,
             finished_at=timezone.now(),
             error_text='',
@@ -92,7 +87,7 @@ def process_export(self, export_job_id: str) -> None:
             entity_type='spreadsheet_export_job',
             entity_id=job.id,
             entity_label=job.document.title,
-            diff={'status': SpreadsheetJobStatus.COMPLETED, 'output_storage_key': str(out_rel)},
+            diff={'status': SpreadsheetJobStatus.COMPLETED, 'output_storage_key': out_rel},
         )
     except Exception as exc:  # noqa: BLE001
         SpreadsheetExportJob.objects.filter(id=job.id).update(

@@ -1,6 +1,8 @@
 import logging
 
 from celery import shared_task
+from django.db import transaction
+from django.db.utils import IntegrityError
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -17,43 +19,49 @@ def process_domain_event(self, event_id: str):
     from apps.automations.services.context_builder import build_context
 
     try:
-        event = DomainEvent.objects.select_related('organization', 'actor').get(id=event_id)
-        if event.is_processed:
-            return
+        with transaction.atomic():
+            event = DomainEvent.objects.select_for_update().select_related('organization', 'actor').get(id=event_id)
+            if event.is_processed:
+                return
 
-        rules = AutomationRule.objects.filter(
-            organization=event.organization,
-            trigger_type=event.event_type,
-            status=AutomationRule.Status.ACTIVE,
-        ).prefetch_related('condition_groups__conditions', 'actions')
-
-        context = build_context(event)
-
-        for rule in rules:
-            idempotency_key = f'{rule.id}:{event.id}'
-
-            if AutomationExecution.objects.filter(idempotency_key=idempotency_key).exists():
-                continue
-
-            if not evaluate_rule(rule, event, context):
-                continue
-
-            execution = AutomationExecution.objects.create(
+            rules = AutomationRule.objects.filter(
                 organization=event.organization,
-                rule=rule,
-                event=event,
-                entity_type=event.entity_type,
-                entity_id=event.entity_id,
-                idempotency_key=idempotency_key,
-                status='running',
-                started_at=timezone.now(),
-            )
+                trigger_type=event.event_type,
+                status=AutomationRule.Status.ACTIVE,
+            ).prefetch_related('condition_groups__conditions', 'actions')
 
-            execute_actions(execution, rule, event, context)
+            context = build_context(event)
 
-        event.is_processed = True
-        event.processed_at = timezone.now()
-        event.save(update_fields=['is_processed', 'processed_at'])
+            for rule in rules:
+                idempotency_key = f'{rule.id}:{event.id}'
+
+                if not evaluate_rule(rule, event, context):
+                    continue
+
+                try:
+                    execution, created = AutomationExecution.objects.get_or_create(
+                        idempotency_key=idempotency_key,
+                        defaults={
+                            'organization': event.organization,
+                            'rule': rule,
+                            'event': event,
+                            'entity_type': event.entity_type,
+                            'entity_id': event.entity_id,
+                            'status': 'running',
+                            'started_at': timezone.now(),
+                        },
+                    )
+                except IntegrityError:
+                    continue
+
+                if not created:
+                    continue
+
+                execute_actions(execution, rule, event, context)
+
+            event.is_processed = True
+            event.processed_at = timezone.now()
+            event.save(update_fields=['is_processed', 'processed_at'])
 
     except DomainEvent.DoesNotExist:
         logger.warning('DomainEvent %s not found', event_id)

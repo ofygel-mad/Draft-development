@@ -1,7 +1,7 @@
 import os
 import logging
-from django.conf import settings
 from django.utils import timezone
+from django.core.files.storage import default_storage
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -19,7 +19,6 @@ from apps.imports.services.state_machine import (
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = os.path.join(settings.MEDIA_ROOT, 'imports')
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'.csv', '.xlsx', '.xls'}
 
@@ -31,13 +30,12 @@ TERMINAL_STATUSES = {
 
 
 def _save_upload_file(request, file):
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
     safe_name = f"{request.user.id}_{file.name.replace(' ', '_')}"
-    file_path = os.path.join(UPLOAD_DIR, safe_name)
-    with open(file_path, 'wb') as f:
+    storage_key = f'imports/{safe_name}'
+    with default_storage.open(storage_key, 'wb') as dest:
         for chunk in file.chunks():
-            f.write(chunk)
-    return file_path
+            dest.write(chunk)
+    return storage_key
 
 
 class ImportJobViewSet(viewsets.ModelViewSet):

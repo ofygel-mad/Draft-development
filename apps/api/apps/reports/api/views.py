@@ -12,12 +12,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.permissions import HasRolePerm
+from apps.core.services import get_dashboard_cache_version
+
 
 class DashboardSummaryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm = 'reports.read'
 
     def get(self, request):
-        cache_key = f'dashboard:{request.user.organization_id}:{request.user.id}'
+        org_id = request.user.organization_id
+        cache_version = get_dashboard_cache_version(org_id)
+        cache_key = f'dashboard:{org_id}:{request.user.id}:v{cache_version}'
         cached = cache.get(cache_key)
         if cached:
             return Response(cached)

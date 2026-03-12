@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.automations.models import DomainEvent
@@ -25,21 +26,25 @@ def publish_event(
     Безопасен при дублировании (dedupe_key).
     """
     try:
-        if dedupe_key and DomainEvent.objects.filter(dedupe_key=dedupe_key).exists():
-            logger.debug('DomainEvent skipped (dedupe): %s', dedupe_key)
-            return None
-
-        event = DomainEvent.objects.create(
-            organization_id=organization_id,
-            event_type=event_type,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            actor_id=actor_id,
-            source=source,
-            payload_json=payload,
-            occurred_at=timezone.now(),
-            dedupe_key=dedupe_key,
-        )
+        with transaction.atomic():
+            try:
+                event = DomainEvent.objects.create(
+                    organization_id=organization_id,
+                    event_type=event_type,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    actor_id=actor_id,
+                    source=source,
+                    payload_json=payload,
+                    occurred_at=timezone.now(),
+                    dedupe_key=dedupe_key,
+                )
+            except IntegrityError:
+                if not dedupe_key:
+                    raise
+                logger.debug('DomainEvent skipped (dedupe): %s', dedupe_key)
+                event = DomainEvent.objects.get(dedupe_key=dedupe_key)
+                return event
 
         from apps.automations.tasks import process_domain_event
 

@@ -1,9 +1,12 @@
 import csv
 import re
 import logging
+from tempfile import NamedTemporaryFile
 from typing import Any
 
 import phonenumbers
+from django.core.files.storage import default_storage
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -42,34 +45,36 @@ class ImportProcessor:
         raise ValueError(f'Unknown import_type: {self.job.import_type}')
 
     def _read_csv(self) -> list[list[str]]:
-        with open(self.job.file_path, encoding='utf-8-sig', newline='') as f:
-            reader = csv.reader(f)
-            rows = list(reader)
+        if default_storage.exists(self.job.file_path):
+            with default_storage.open(self.job.file_path, 'r', encoding='utf-8-sig', newline='') as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+        else:
+            with open(self.job.file_path, encoding='utf-8-sig', newline='') as f:
+                reader = csv.reader(f)
+                rows = list(reader)
         return rows[1:] if rows else []
 
     def _read_excel(self) -> list[list[str]]:
         import openpyxl
 
-        wb = openpyxl.load_workbook(self.job.file_path, read_only=True, data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-        wb.close()
+        if default_storage.exists(self.job.file_path):
+            with default_storage.open(self.job.file_path, 'rb') as source, NamedTemporaryFile(suffix='.xlsx') as tmp:
+                tmp.write(source.read())
+                tmp.flush()
+                wb = openpyxl.load_workbook(tmp.name, read_only=True, data_only=True)
+                ws = wb.active
+                rows = list(ws.iter_rows(values_only=True))
+                wb.close()
+        else:
+            wb = openpyxl.load_workbook(self.job.file_path, read_only=True, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            wb.close()
         return [[str(c) if c is not None else '' for c in row] for row in rows[1:]]
 
     def _import_customers(self, rows: list, mapping: dict) -> dict[str, Any]:
         from apps.customers.models import Customer
-        from django.db.models import Q
-
-        def _is_duplicate(org_id, phone, email):
-            if not phone and not email:
-                return False
-            q = Q(organization_id=org_id)
-            if phone:
-                q &= Q(phone=phone)
-            elif email:
-                q &= Q(email=email)
-            return Customer.objects.filter(q, deleted_at__isnull=True).exists()
-
         created = updated = 0
         errors = []
 
@@ -99,37 +104,38 @@ class ImportProcessor:
                     errors.append({'row': row_idx + 2, 'error': 'Нет имени и телефона'})
                     continue
 
-                if _is_duplicate(self.job.organization_id, data.get('phone'), data.get('email')):
-                    updated += 1
-                    continue
+                with transaction.atomic():
+                    from apps.organizations.models import Organization
 
-                lookup = {}
-                if data.get('phone'):
-                    lookup['phone'] = data['phone']
-                    lookup['organization'] = self.job.organization
-                elif data.get('email'):
-                    lookup['email'] = data['email']
-                    lookup['organization'] = self.job.organization
-                else:
-                    Customer.objects.create(
-                        organization=self.job.organization,
-                        owner=self.job.created_by,
-                        full_name=data.get('full_name', 'Без имени'),
-                        email=data.get('email', ''),
-                        company_name=data.get('company_name', ''),
-                        source=data.get('source', 'import'),
-                    )
-                    created += 1
-                    continue
+                    Organization.objects.select_for_update().filter(id=self.job.organization_id).first()
 
-                defaults = {
-                    'full_name': data.get('full_name', 'Без имени'),
-                    'email': data.get('email', ''),
-                    'company_name': data.get('company_name', ''),
-                    'source': data.get('source', 'import'),
-                    'owner': self.job.created_by,
-                }
-                _, was_created = Customer.objects.update_or_create(defaults=defaults, **lookup)
+                    lookup = {}
+                    if data.get('phone'):
+                        lookup['phone'] = data['phone']
+                        lookup['organization'] = self.job.organization
+                    elif data.get('email'):
+                        lookup['email'] = data['email']
+                        lookup['organization'] = self.job.organization
+                    else:
+                        Customer.objects.create(
+                            organization=self.job.organization,
+                            owner=self.job.created_by,
+                            full_name=data.get('full_name', 'Без имени'),
+                            email=data.get('email', ''),
+                            company_name=data.get('company_name', ''),
+                            source=data.get('source', 'import'),
+                        )
+                        created += 1
+                        continue
+
+                    defaults = {
+                        'full_name': data.get('full_name', 'Без имени'),
+                        'email': data.get('email', ''),
+                        'company_name': data.get('company_name', ''),
+                        'source': data.get('source', 'import'),
+                        'owner': self.job.created_by,
+                    }
+                    _, was_created = Customer.objects.update_or_create(defaults=defaults, **lookup)
                 if was_created:
                     created += 1
                 else:

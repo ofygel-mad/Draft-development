@@ -4,12 +4,23 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from apps.activities.models import Activity
+from apps.core.permissions import HasRolePerm
 from ..models import Task
 from ..serializers import TaskSerializer
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm_map = {
+        'list': 'tasks.read',
+        'retrieve': 'tasks.read',
+        'create': 'tasks.create',
+        'update': 'tasks.update',
+        'partial_update': 'tasks.update',
+        'complete': 'tasks.update',
+        'reopen': 'tasks.update',
+        'destroy': 'tasks.update',
+    }
     serializer_class = TaskSerializer
     filter_backends = [filters.OrderingFilter]
     ordering = ['due_at', '-created_at']
@@ -28,6 +39,14 @@ class TaskViewSet(viewsets.ModelViewSet):
         return qs.select_related('assigned_to', 'customer', 'deal')
 
     def perform_create(self, serializer):
+        customer = serializer.validated_data.get('customer')
+        deal = serializer.validated_data.get('deal')
+        if customer and customer.organization_id != self.request.user.organization_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'customer': 'Invalid customer for organization'})
+        if deal and deal.organization_id != self.request.user.organization_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'deal': 'Invalid deal for organization'})
         instance = serializer.save(
             organization=self.request.user.organization,
             created_by=self.request.user,
@@ -61,6 +80,17 @@ class TaskViewSet(viewsets.ModelViewSet):
             )
         except Exception:
             pass
+
+    def perform_update(self, serializer):
+        customer = serializer.validated_data.get('customer')
+        deal = serializer.validated_data.get('deal')
+        if customer and customer.organization_id != self.request.user.organization_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'customer': 'Invalid customer for organization'})
+        if deal and deal.organization_id != self.request.user.organization_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'deal': 'Invalid deal for organization'})
+        serializer.save()
 
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):

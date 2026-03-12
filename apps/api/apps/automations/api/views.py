@@ -1,6 +1,3 @@
-from hashlib import sha256
-
-from django.core.cache import cache
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -17,19 +14,25 @@ from apps.automations.serializers import (
 )
 from apps.audit.models import AuditLog
 from apps.audit.services import log_action
+from apps.core.permissions import HasRolePerm
 
 
 class AutomationRuleViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
-
-    IDEMPOTENCY_TTL_SECONDS = 60 * 60 * 24
-
-    def _idempotency_cache_key(self, request, action_name: str) -> str | None:
-        idempotency_key = request.headers.get('Idempotency-Key', '').strip()
-        if not idempotency_key:
-            return None
-        payload_hash = sha256(str(request.data).encode('utf-8')).hexdigest()
-        return f'automations:{request.user.organization_id}:{request.user.id}:{action_name}:{idempotency_key}:{payload_hash}'
+    permission_classes = [IsAuthenticated, HasRolePerm]
+    required_perm_map = {
+        'list': 'automations.read',
+        'retrieve': 'automations.read',
+        'templates': 'automations.read',
+        'executions': 'automations.read',
+        'create': 'automations.create',
+        'create_from_template': 'automations.create',
+        'update': 'automations.update',
+        'partial_update': 'automations.update',
+        'toggle_status': 'automations.update',
+        'set_conditions': 'automations.update',
+        'set_actions': 'automations.update',
+        'destroy': 'automations.delete',
+    }
 
     def _log_audit(self, *, action: str, rule: AutomationRule, diff: dict | None = None) -> None:
         log_action(
@@ -146,16 +149,6 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='from_template')
     def create_from_template(self, request):
         """Создаёт AutomationRule из шаблона по его коду."""
-        cache_key = self._idempotency_cache_key(request, 'from_template')
-        if cache_key:
-            existing_rule_id = cache.get(cache_key)
-            if existing_rule_id:
-                try:
-                    existing_rule = self.get_queryset().get(id=existing_rule_id)
-                    return Response(AutomationRuleSerializer(existing_rule).data, status=status.HTTP_200_OK)
-                except AutomationRule.DoesNotExist:
-                    pass
-
         template_code = request.data.get('template_code')
         try:
             template = AutomationTemplate.objects.get(code=template_code, is_active=True)
@@ -194,9 +187,6 @@ class AutomationRuleViewSet(viewsets.ModelViewSet):
                     config_json=a_data.get('config_json', {}),
                     position=i,
                 )
-
-        if cache_key:
-            cache.set(cache_key, str(rule.id), timeout=self.IDEMPOTENCY_TTL_SECONDS)
 
         self._log_audit(
             action=AuditLog.Action.CREATE,
