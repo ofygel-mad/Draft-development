@@ -1,0 +1,16 @@
+* @team-platform
+
+/apps/api/apps/core/ @team-platform @team-backend
+/apps/api/apps/spreadsheets/ @team-platform @team-data
+/apps/api/apps/imports/ @team-platform @team-data
+/apps/api/apps/automations/ @team-platform @team-backend
+/apps/api/apps/audit/ @team-platform @team-backend
+/apps/api/config/ @team-platform @team-backend
+
+/apps/web/src/app/ @team-platform @team-frontend
+/apps/web/src/pages/ @team-platform @team-frontend
+/apps/web/src/shared/ @team-platform @team-frontend
+/apps/web/src/widgets/ @team-platform @team-frontend
+
+/infra/ @team-platform @team-devops
+/docs/ @team-platform @team-product

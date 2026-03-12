@@ -6,7 +6,15 @@
     "build": "pnpm --dir apps/web install --frozen-lockfile && pnpm --dir apps/web run build",
     "preview": "pnpm --dir apps/web run preview",
     "install:web": "pnpm --dir apps/web install",
-    "start": "pnpm --dir apps/web run preview --host 0.0.0.0 --port ${PORT:-4173}"
+    "start": "pnpm --dir apps/web run preview --host 0.0.0.0 --port ${PORT:-4173}",
+    "lint:web": "pnpm --dir apps/web run lint",
+    "typecheck:web": "pnpm --dir apps/web exec tsc --noEmit",
+    "test:api": "pytest -q apps/api/tests",
+    "check:api": "cd apps/api && python manage.py check --deploy",
+    "migrate:plan": "cd apps/api && python manage.py makemigrations --check --dry-run",
+    "collectstatic:check": "cd apps/api && python manage.py collectstatic --noinput --clear",
+    "quality": "pnpm run lint:web && pnpm run typecheck:web && pnpm run migrate:plan && pnpm run check:api",
+    "release:check": "pnpm run quality && pnpm run build && pnpm run collectstatic:check"
   },
   "packageManager": "pnpm@10.18.3"
 }

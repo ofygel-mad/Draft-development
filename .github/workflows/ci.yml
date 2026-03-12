@@ -42,13 +42,22 @@ jobs:
       - run: pip install -r requirements/dev.txt
 
       - name: Lint
+        run: ruff check .
+
+      - name: Django checks
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgres://crm:crm@localhost:5432/crm_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci-secret-key-not-for-production
         run: |
-          pip install ruff
-          ruff check .
+          python manage.py makemigrations --check --dry-run
+          python manage.py check
+          python manage.py check --deploy
+          python manage.py collectstatic --noinput --clear
 
       - name: Security scan
         run: |
-          pip install bandit
           bandit -r apps/ -ll -q
           pip check
 
@@ -58,7 +67,7 @@ jobs:
           DATABASE_URL: postgres://crm:crm@localhost:5432/crm_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-secret-key-not-for-production
-        run: pytest --tb=short -q --cov=apps --cov-report=term-missing
+        run: pytest --tb=short -q --maxfail=1 --cov=apps --cov-report=term-missing
 
   frontend:
     runs-on: ubuntu-latest
@@ -86,3 +95,17 @@ jobs:
 
       - name: Type check
         run: pnpm exec tsc --noEmit
+
+  release-readiness:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate runbooks and release docs exist
+        run: |
+          test -f docs/operations/release-readiness.md
+          test -f docs/operations/incident-runbook.md
+          test -f docs/product/success-metrics.md
+          test -f docs/testing/test-matrix.md

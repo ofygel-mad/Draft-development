@@ -28,3 +28,20 @@
 - `reports` now exposes daily focus payload for retention and morning command center.
 - `users` provides presence heartbeat/read endpoints for multi-user execution visibility.
 - `web` gets stronger token discipline, mobile sticky actions, PWA install path, offline fallback and spreadsheet review UI.
+
+
+## Non-negotiable platform rules
+
+- Backend domain logic lives in `apps/api/apps/*/services`, selectors, tasks and domain modules.
+- Frontend must consume API contracts, not invent data semantics ad hoc.
+- Cross-cutting concerns go through shared layers only: request context, auth, audit, telemetry, permissions.
+- Every new critical flow must define owner, metrics, rollback and failure behavior before release.
+
+## Release rings
+
+1. local dev
+2. internal alpha
+3. limited pilot organizations
+4. general availability
+
+No feature touching spreadsheets, automations, imports or permission logic should jump directly to broad rollout.
