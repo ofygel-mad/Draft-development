@@ -73,7 +73,7 @@ interface ReportData {
 
 
 
-type Period = "7d" | "30d" | "month" | "quarter" | "year";
+type Period = "7d" | "30d" | "month" | "quarter" | "year" | "custom";
 
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: "7d", label: "7 дней" },
@@ -81,9 +81,17 @@ const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: "month", label: "Месяц" },
   { key: "quarter", label: "Квартал" },
   { key: "year", label: "Год" },
+  { key: "custom", label: "Свой" },
 ];
 
-function periodToDates(p: Period): { date_from: string; date_to: string } {
+function periodToDates(
+  p: Period,
+  custom?: { from: string; to: string },
+): { date_from: string; date_to: string } {
+  if (p === "custom" && custom?.from && custom?.to) {
+    return { date_from: custom.from, date_to: custom.to };
+  }
+
   const now = new Date();
   const to = format(now, "yyyy-MM-dd");
   const from = format(
@@ -306,7 +314,8 @@ export default function ReportsPage() {
   const orgCurrency = org?.currency ?? 'KZT';
   const isMobile = useIsMobile();
   const [period, setPeriod] = useState<Period>("30d");
-  const dates = periodToDates(period);
+  const [customRange, setCustomRange] = useState({ from: "", to: "" });
+  const dates = periodToDates(period, customRange);
   const { data, isLoading } = useQuery<ReportData>({
     queryKey: ["reports-summary", period],
     queryFn: () => api.get("/reports/summary/", dates),
@@ -334,28 +343,49 @@ export default function ReportsPage() {
     value: s.count,
   }));
   const periodFilter = (
-    <div style={{ display: "flex", gap: 4, padding: "4px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
-      {PERIOD_OPTIONS.map((o) => (
-        <button
-          key={o.key}
-          onClick={() => setPeriod(o.key)}
-          style={{
-            padding: "5px 11px",
-            fontSize: 12,
-            fontWeight: 500,
-            borderRadius: "var(--radius-sm)",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "var(--font-body)",
-            background: period === o.key ? "var(--color-bg-elevated)" : "transparent",
-            color: period === o.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
-            boxShadow: period === o.key ? "var(--shadow-xs)" : "none",
-            transition: "all var(--transition-fast)",
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 4, padding: "4px", background: "var(--color-bg-muted)", borderRadius: "var(--radius-md)" }}>
+        {PERIOD_OPTIONS.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => setPeriod(o.key)}
+            style={{
+              padding: "5px 11px",
+              fontSize: 12,
+              fontWeight: 500,
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "var(--font-body)",
+              background: period === o.key ? "var(--color-bg-elevated)" : "transparent",
+              color: period === o.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
+              boxShadow: period === o.key ? "var(--shadow-xs)" : "none",
+              transition: "all var(--transition-fast)",
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {period === "custom" && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="date"
+            value={customRange.from}
+            onChange={(e) => setCustomRange((r) => ({ ...r, from: e.target.value }))}
+            className="crm-input"
+            style={{ fontSize: 12, padding: "4px 8px", width: 130 }}
+          />
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>—</span>
+          <input
+            type="date"
+            value={customRange.to}
+            onChange={(e) => setCustomRange((r) => ({ ...r, to: e.target.value }))}
+            className="crm-input"
+            style={{ fontSize: 12, padding: "4px 8px", width: 130 }}
+          />
+        </div>
+      )}
     </div>
   );
 

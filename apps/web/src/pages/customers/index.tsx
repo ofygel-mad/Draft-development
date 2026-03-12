@@ -181,13 +181,31 @@ export default function CustomersPage() {
   const toggleOne = (id: string) => setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const toggleAll = () => setSelected(allChecked ? new Set() : new Set(customers.map(c => c.id)));
 
+  const restoreMutation = useMutation({
+    mutationFn: (body: { ids: string[] }) => api.post('/customers/bulk/', { ...body, action: 'restore' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Восстановлено');
+    },
+  });
+
   const bulkMutation = useMutation({
     mutationFn: (body: object) => api.post('/customers/bulk/', body),
-    onSuccess: (_, v: any) => {
+    onSuccess: (res: any, v: any) => {
       qc.invalidateQueries({ queryKey: ['customers'] });
       setSelected(new Set());
-      const messages: Record<string, string> = { delete: 'Удалено', assign: 'Назначено', change_status: 'Статус изменён' };
-      toast.success(messages[v.action] ?? 'Готово');
+      if (v.action === 'delete') {
+        toast.success(`Удалено ${res.affected ?? v.ids?.length ?? ''} клиентов`, {
+          action: {
+            label: 'Отменить',
+            onClick: () => restoreMutation.mutate({ ids: v.ids }),
+          },
+          duration: 5000,
+        });
+      } else {
+        const messages: Record<string, string> = { assign: 'Назначено', change_status: 'Статус изменён' };
+        toast.success(messages[v.action] ?? 'Готово');
+      }
     },
   });
 
@@ -394,7 +412,7 @@ export default function CustomersPage() {
           { label: 'Новая задача', icon: <UserCog size={13} />, onClick: () => { window.dispatchEvent(new CustomEvent('crm:new-task', { detail: { customerId: c.id } })); } },
           ...(c.phone ? [{ label: 'Написать в WhatsApp', icon: <MessageCircle size={13} />, color: '#10B981', onClick: () => window.open(`https://wa.me/${formatPhoneForWhatsApp(c.phone)}`, '_blank') }] : []),
           { label: '', divider: true, onClick: () => {} },
-          { label: 'Удалить', icon: <Trash2 size={13} />, danger: true, onClick: () => { if (confirm(`Удалить ${c.full_name}?`)) bulkMutation.mutate({ action: 'delete', ids: [c.id] }); } },
+          { label: 'Удалить', icon: <Trash2 size={13} />, danger: true, onClick: () => bulkMutation.mutate({ action: 'delete', ids: [c.id] }) },
         ];
         return <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
