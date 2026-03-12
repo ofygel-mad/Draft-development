@@ -293,6 +293,8 @@ class InviteView(APIView):
 class AcceptInviteView(APIView):
     """Принятие приглашения новым пользователем."""
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         token = request.data.get('token', '')
@@ -369,3 +371,72 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.save(update_fields=['password'])
         return Response({'detail': 'Пароль успешно изменён'})
+
+
+
+class ForgotPasswordView(APIView):
+    """Запрос на сброс пароля."""
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'detail': 'Email обязателен'}, status=400)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user = User.objects.filter(email=email).first()
+        if user:
+            token = secrets.token_urlsafe(32)
+            cache.set(f'reset:{token}', {'user_id': str(user.id)}, timeout=3600)
+            reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={token}"
+            if getattr(settings, 'EMAIL_HOST', ''):
+                try:
+                    send_mail(
+                        subject='Сброс пароля CRM',
+                        message=(
+                            f'Для сброса пароля перейдите по ссылке:\n{reset_url}\n\n'
+                            'Ссылка действительна 1 час.'
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[email],
+                        fail_silently=True,
+                    )
+                except Exception as exc:
+                    logger.warning('Failed to send reset email: %s', exc)
+
+        return Response({'detail': 'Если email зарегистрирован, ссылка отправлена'})
+
+
+class ResetPasswordView(APIView):
+    """Установка нового пароля по токену."""
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
+    def post(self, request):
+        token = request.data.get('token', '')
+        new_password = request.data.get('new_password', '')
+        if not token or not new_password:
+            return Response({'detail': 'token и new_password обязательны'}, status=400)
+        if len(new_password) < 8:
+            return Response({'detail': 'Пароль минимум 8 символов'}, status=400)
+
+        data = cache.get(f'reset:{token}')
+        if not data:
+            return Response({'detail': 'Ссылка недействительна или устарела'}, status=400)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=data['user_id'])
+        except User.DoesNotExist:
+            return Response({'detail': 'Пользователь не найден'}, status=400)
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        cache.delete(f'reset:{token}')
+        return Response({'detail': 'Пароль успешно сброшен'})

@@ -15,6 +15,13 @@ from apps.core.permissions import user_can
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
+    @staticmethod
+    def _invalidate_dashboard_cache(organization_id):
+        from apps.users.models import User
+
+        for uid in User.objects.filter(organization_id=organization_id).values_list('id', flat=True):
+            cache.delete(f'dashboard:{organization_id}:{uid}')
+
     permission_classes = [IsAuthenticated]
 
     ACTION_PERMISSIONS = {
@@ -100,7 +107,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             entity_label=instance.full_name,
             request=self.request,
         )
-        cache.delete(f'dashboard:{instance.organization_id}')
+        self._invalidate_dashboard_cache(instance.organization_id)
 
     def perform_update(self, serializer):
         instance = serializer.save()
@@ -113,12 +120,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
             entity_label=instance.full_name,
             request=self.request,
         )
-        cache.delete(f'dashboard:{instance.organization_id}')
+        self._invalidate_dashboard_cache(instance.organization_id)
 
     def perform_destroy(self, instance):
         instance.deleted_at = timezone.now()
         instance.save(update_fields=['deleted_at'])
-        cache.delete(f'dashboard:{instance.organization_id}')
+        self._invalidate_dashboard_cache(instance.organization_id)
 
     @action(detail=False, methods=['post'])
     def bulk(self, request):
@@ -136,7 +143,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         if act == 'delete':
             affected = qs.update(deleted_at=timezone.now())
-            cache.delete(f'dashboard:{request.user.organization_id}')
+            log_action(
+                organization_id=request.user.organization_id,
+                actor_id=request.user.id,
+                action='delete',
+                entity_type='customer_bulk',
+                entity_label=f'{affected} клиентов',
+                request=request,
+            )
+            self._invalidate_dashboard_cache(request.user.organization_id)
             return Response({'affected': affected})
 
         if act == 'restore':
@@ -145,7 +160,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
                 id__in=ids,
                 deleted_at__isnull=False,
             ).update(deleted_at=None)
-            cache.delete(f'dashboard:{request.user.organization_id}')
+            self._invalidate_dashboard_cache(request.user.organization_id)
             return Response({'affected': affected})
 
         if act == 'assign':
@@ -153,7 +168,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             if not owner_id:
                 return Response({'error': 'owner_id обязателен'}, status=400)
             affected = qs.update(owner_id=owner_id)
-            cache.delete(f'dashboard:{request.user.organization_id}')
+            self._invalidate_dashboard_cache(request.user.organization_id)
             return Response({'affected': affected})
 
         if act == 'change_status':
@@ -161,7 +176,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             if new_status not in ('new', 'active', 'inactive', 'archived'):
                 return Response({'error': 'Неверный статус'}, status=400)
             affected = qs.update(status=new_status)
-            cache.delete(f'dashboard:{request.user.organization_id}')
+            self._invalidate_dashboard_cache(request.user.organization_id)
             return Response({'affected': affected})
 
         return Response({'error': f'Неизвестное действие: {act}'}, status=400)
@@ -191,10 +206,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def activities(self, request, pk=None):
         customer = self.get_object()
+        page_size = min(int(request.query_params.get('page_size', 20)), 100)
+        offset = int(request.query_params.get('offset', 0))
+
+        total = Activity.objects.filter(
+            organization=request.user.organization,
+            customer=customer,
+        ).count()
         qs = Activity.objects.filter(
             organization=request.user.organization,
             customer=customer,
-        ).select_related('actor').order_by('-created_at')[:50]
+        ).select_related('actor').order_by('-created_at')[offset:offset + page_size]
         data = [
             {
                 'id': str(a.id),
@@ -205,7 +227,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             }
             for a in qs
         ]
-        return Response({'results': data})
+        return Response({'results': data, 'total': total, 'offset': offset, 'page_size': page_size})
 
     @action(detail=True, methods=['get'])
     def tasks(self, request, pk=None):

@@ -24,13 +24,18 @@ class SessionBootstrapView(APIView):
             'role': role,
             'capabilities': sorted(get_user_capabilities(user)),
             'counters': {
-                'unread_notifications': Notification.objects.filter(user=user, is_read=False).count(),
-                'tasks_today': Task.objects.filter(assigned_to=user, is_completed=False).count(),
-                'deals_at_risk': Deal.objects.filter(owner=user, stage__in=['proposal', 'negotiation']).count(),
+                'unread_notifications': Notification.objects.filter(recipient=user, is_read=False).count(),
+                'tasks_today': Task.objects.filter(assigned_to=user, status=Task.Status.OPEN, due_at__date=today).count(),
+                'deals_at_risk': Deal.objects.filter(
+                    owner=user,
+                    status='open',
+                    deleted_at__isnull=True,
+                    stage__name__in=['Переговоры', 'Предложение'],
+                ).count(),
             },
             'daily_summary': {
                 'customers_created_today': Customer.objects.filter(owner=user, created_at__date=today).count(),
-                'open_tasks': Task.objects.filter(assigned_to=user, is_completed=False).count(),
-                'overdue_tasks': Task.objects.filter(assigned_to=user, is_completed=False, due_at__date__lt=today).count(),
+                'open_tasks': Task.objects.filter(assigned_to=user, status=Task.Status.OPEN).count(),
+                'overdue_tasks': Task.objects.filter(assigned_to=user, status=Task.Status.OPEN, due_at__date__lt=today).count(),
             },
         })

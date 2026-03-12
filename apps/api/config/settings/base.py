@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
     'drf_spectacular',
+    'django_celery_beat',
+    'django_celery_results',
     # CRM
     'apps.core',
     'apps.organizations',
@@ -238,7 +240,7 @@ SPECTACULAR_SETTINGS = {
 
 CACHES = {
     'default': {
-        'BACKEND':  'django.core.cache.backends.redis.RedisCache',
+        'BACKEND':  'django_redis.cache.RedisCache',
         'LOCATION': os.getenv('REDIS_URL', 'redis://redis:6379/1'),
         'OPTIONS':  { 'CLIENT_CLASS': 'django_redis.client.DefaultClient' },
         'TIMEOUT':  300,

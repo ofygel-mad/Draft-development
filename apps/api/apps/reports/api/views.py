@@ -1,3 +1,4 @@
+import csv
 import io
 from datetime import timedelta
 
@@ -16,7 +17,7 @@ class DashboardSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        cache_key = f'dashboard:{request.user.organization_id}'
+        cache_key = f'dashboard:{request.user.organization_id}:{request.user.id}'
         cached = cache.get(cache_key)
         if cached:
             return Response(cached)
@@ -264,14 +265,34 @@ class ReportExportView(APIView):
 
     def get(self, request):
         from apps.customers.models import Customer
-        qs = Customer.objects.filter(organization=request.user.organization, deleted_at__isnull=True).values('full_name', 'company_name', 'phone', 'email', 'status', 'source', 'created_at')
+
+        qs = Customer.objects.filter(
+            organization=request.user.organization,
+            deleted_at__isnull=True,
+        ).select_related('owner').order_by('-created_at')
 
         def stream():
-            yield 'Имя,Компания,Телефон,Email,Статус,Источник,Дата\n'
-            for c in qs:
-                yield f"{c['full_name']},{c['company_name'] or ''},{c['phone'] or ''},{c['email'] or ''},{c['status']},{c['source'] or ''},{c['created_at'].strftime('%d.%m.%Y')}\n"
+            buf = io.StringIO()
+            writer = csv.writer(buf, quoting=csv.QUOTE_ALL)
+            writer.writerow(['Имя', 'Компания', 'Телефон', 'Email', 'Статус', 'Источник', 'Ответственный', 'Дата'])
+            yield buf.getvalue()
 
-        resp = StreamingHttpResponse(stream(), content_type='text/csv; charset=utf-8')
+            for c in qs:
+                buf = io.StringIO()
+                writer = csv.writer(buf, quoting=csv.QUOTE_ALL)
+                writer.writerow([
+                    c.full_name,
+                    c.company_name or '',
+                    c.phone or '',
+                    c.email or '',
+                    c.status,
+                    c.source or '',
+                    c.owner.full_name if c.owner else '',
+                    c.created_at.strftime('%d.%m.%Y'),
+                ])
+                yield buf.getvalue()
+
+        resp = StreamingHttpResponse(stream(), content_type='text/csv; charset=utf-8-sig')
         resp['Content-Disposition'] = 'attachment; filename="crm-export.csv"'
         return resp
 
@@ -341,7 +362,7 @@ class DailyFocusView(APIView):
         from apps.deals.models import Deal
 
         today = timezone.localdate()
-        overdue = Task.objects.filter(assigned_to=request.user, is_completed=False, due_at__date__lt=today).count()
-        due_today = Task.objects.filter(assigned_to=request.user, is_completed=False, due_at__date=today).count()
-        no_touch_deals = Deal.objects.filter(owner=request.user).count()
+        overdue = Task.objects.filter(assigned_to=request.user, status='open', due_at__date__lt=today).count()
+        due_today = Task.objects.filter(assigned_to=request.user, status='open', due_at__date=today).count()
+        no_touch_deals = Deal.objects.filter(owner=request.user, status='open', deleted_at__isnull=True).count()
         return Response({'start_day': {'overdue_tasks': overdue, 'tasks_due_today': due_today, 'deals_without_touch': no_touch_deals}, 'watchlist': [{'code': 'overdue_tasks', 'count': overdue, 'priority': 'high'}, {'code': 'due_today', 'count': due_today, 'priority': 'medium'}]})

@@ -99,9 +99,10 @@ function StatCard({ label, value, delta, icon, accent, fmt = 'n', loading }: {
 }
 
 
-function WatchlistBlock({ data, navigate }: {
+function WatchlistBlock({ data, navigate, isMobile }: {
   data: DashboardData;
   navigate: ReturnType<typeof import('react-router-dom').useNavigate>;
+  isMobile: boolean;
 }) {
   const stalled = data.stalled_deals ?? [];
   const silent = data.silent_customers ?? [];
@@ -185,7 +186,6 @@ function WatchlistBlock({ data, navigate }: {
           })}
         </div>
       )}
-      {!isMobile && <div style={{ marginTop: 20 }}><TeamPresence /></div>}
     </div>
   );
 }
@@ -378,9 +378,8 @@ export default function DashboardPage() {
       </div>
 
       {!isLoading && data && (
-        <WatchlistBlock data={data} navigate={navigate} />
+        <WatchlistBlock data={data} navigate={navigate} isMobile={isMobile} />
       )}
-      {!isMobile && <div style={{ marginTop: 20 }}><TeamPresence /></div>}
     </div>
   );
 }

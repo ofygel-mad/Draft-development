@@ -11,7 +11,8 @@ class CustomerListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['id', 'full_name', 'company_name', 'phone', 'email',
-                  'bin_iin', 'source', 'status', 'owner', 'created_at', 'health']
+                  'bin_iin', 'source', 'status', 'owner', 'created_at', 'health',
+                  'follow_up_due_at', 'response_state', 'last_contact_at']
 
 
     def get_health(self, obj) -> dict:

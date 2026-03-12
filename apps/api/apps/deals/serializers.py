@@ -5,6 +5,36 @@ from apps.customers.serializers import CustomerListSerializer
 from apps.pipelines.serializers import PipelineStageSerializer
 
 
+class OrgScopedPipelineField(serializers.PrimaryKeyRelatedField):
+    def get_queryset(self):
+        request = self.context.get('request')
+        if request and hasattr(request.user, 'organization'):
+            from apps.pipelines.models import Pipeline
+            return Pipeline.objects.filter(organization=request.user.organization)
+        return super().get_queryset()
+
+
+class OrgScopedStageField(serializers.PrimaryKeyRelatedField):
+    def get_queryset(self):
+        request = self.context.get('request')
+        if request and hasattr(request.user, 'organization'):
+            from apps.pipelines.models import PipelineStage
+            return PipelineStage.objects.filter(pipeline__organization=request.user.organization)
+        return super().get_queryset()
+
+
+class OrgScopedCustomerField(serializers.PrimaryKeyRelatedField):
+    def get_queryset(self):
+        request = self.context.get('request')
+        if request and hasattr(request.user, 'organization'):
+            from apps.customers.models import Customer
+            return Customer.objects.filter(
+                organization=request.user.organization,
+                deleted_at__isnull=True,
+            )
+        return super().get_queryset()
+
+
 class DealListSerializer(serializers.ModelSerializer):
     owner = UserShortSerializer(read_only=True)
     customer = CustomerListSerializer(read_only=True)
@@ -31,15 +61,9 @@ class DealSerializer(serializers.ModelSerializer):
     customer = CustomerListSerializer(read_only=True)
     stage = PipelineStageSerializer(read_only=True)
 
-    customer_id = serializers.PrimaryKeyRelatedField(
-        source='customer', queryset=Deal._meta.get_field('customer').remote_field.model.objects.all(), write_only=True, required=False, allow_null=True
-    )
-    pipeline_id = serializers.PrimaryKeyRelatedField(
-        source='pipeline', queryset=Deal._meta.get_field('pipeline').remote_field.model.objects.all(), write_only=True
-    )
-    stage_id = serializers.PrimaryKeyRelatedField(
-        source='stage', queryset=Deal._meta.get_field('stage').remote_field.model.objects.all(), write_only=True
-    )
+    customer_id = OrgScopedCustomerField(source='customer', write_only=True, required=False, allow_null=True)
+    pipeline_id = OrgScopedPipelineField(source='pipeline', write_only=True)
+    stage_id = OrgScopedStageField(source='stage', write_only=True)
 
     class Meta:
         model = Deal

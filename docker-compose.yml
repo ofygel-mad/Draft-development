@@ -30,7 +30,8 @@ services:
         gunicorn config.wsgi:application
           --bind 0.0.0.0:8000
           --workers ${GUNICORN_WORKERS:-4}
-          --worker-class sync
+          --worker-class gevent
+          --worker-connections 1000
           --timeout 120
           --access-logfile -
           --error-logfile -
@@ -64,7 +65,7 @@ services:
         sh /app/infra/scripts/wait-for-db.sh &&
         celery -A config worker
           -l info
-          -Q default,imports,exports,automations,notifications
+          -Q default,imports,exports,automations,notifications,spreadsheets,webhooks,retention,analytics
           --concurrency=${CELERY_CONCURRENCY:-4}
           --max-tasks-per-child=1000
       "
@@ -151,6 +152,11 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

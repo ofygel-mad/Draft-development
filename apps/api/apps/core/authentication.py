@@ -54,4 +54,5 @@ class ApiTokenAuthentication(BaseAuthentication):
         if not membership:
             raise AuthenticationFailed('Организация не найдена')
 
+        membership.user._api_token = token
         return (membership.user, token)

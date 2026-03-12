@@ -2,8 +2,9 @@ def ensure_default_pipeline(organization):
     """Creates a default pipeline with basic stages if none exist."""
     from apps.pipelines.models import Pipeline, PipelineStage
 
-    if Pipeline.objects.filter(organization=organization).exists():
-        return
+    existing = Pipeline.objects.filter(organization=organization).first()
+    if existing:
+        return existing
     pipeline = Pipeline.objects.create(
         organization=organization,
         name='Основная воронка',
