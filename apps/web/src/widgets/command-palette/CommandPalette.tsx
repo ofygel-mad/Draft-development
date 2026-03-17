@@ -1,8 +1,0 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Search, Users, Briefcase, CheckSquare, Settings } from 'lucide-react';
-import { useCommandPalette } from '../../shared/stores/commandPalette';
-import styles from './CommandPalette.module.css';
-const STATIC_COMMANDS = [{ id: 'go-customers', label: 'Перейти: Клиенты', icon: Users, path: '/customers' }, { id: 'go-deals', label: 'Перейти: Сделки', icon: Briefcase, path: '/deals' }, { id: 'go-tasks', label: 'Перейти: Задачи', icon: CheckSquare, path: '/tasks' }, { id: 'go-settings', label: 'Настройки', icon: Settings, path: '/settings' }];
-export function CommandPalette() { const { close } = useCommandPalette(); const navigate = useNavigate(); const [query, setQuery] = useState(''); const inputRef = useRef<HTMLInputElement>(null); useEffect(() => { inputRef.current?.focus(); }, []); const filtered = STATIC_COMMANDS.filter((c) => c.label.toLowerCase().includes(query.toLowerCase())); return <><motion.div className={styles.backdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={close} /><motion.div className={styles.palette} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}><div className={styles.inputWrap}><Search size={16} /><input ref={inputRef} className={styles.input} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск..." /></div>{filtered.map((cmd) => <button key={cmd.id} className={styles.resultItem} onClick={() => { navigate(cmd.path); close(); }}><cmd.icon size={14} /> <span>{cmd.label}</span></button>)}</motion.div></>; }

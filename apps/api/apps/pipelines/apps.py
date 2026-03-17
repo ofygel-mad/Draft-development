@@ -1,6 +1,0 @@
-from django.apps import AppConfig
-
-
-class PipelinesConfig(AppConfig):
-    name = 'apps.pipelines'
-    label = 'pipelines'

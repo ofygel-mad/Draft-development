@@ -1,1 +1,0 @@
-# Redis infra notes
