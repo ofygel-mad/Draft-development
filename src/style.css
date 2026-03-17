@@ -1,11 +1,32 @@
+/* =========================================================
+   STYLE.CSS — обновлённый
+   Ключевое: canvas прозрачный, небо живёт на body как
+   CSS-градиент. Three.js рисует только рельеф + свет.
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  margin:     0;
+  padding:    0;
+  box-sizing: border-box;
+}
+
+html,
 body {
-  margin: 0;
+  width:    100%;
+  height:   100%;
   overflow: hidden;
-  background-color: #000;
+
+  /* Начальный градиент — dawn (рассвет).
+     Живые цвета из main.ts перекроют это через 1 кадр,
+     здесь просто чтобы не было флэша чёрного. */
+  background: linear-gradient(to bottom, #4a5c7a, #eebb90);
 }
 
 canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
+  display:    block;
+  width:      100% !important;
+  height:     100% !important;
+  background: transparent !important; /* КРИТИЧНО: пропускаем градиент неба */
 }
